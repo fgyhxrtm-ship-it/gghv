@@ -4860,7 +4860,7 @@ function Fenglib:CreateWindow(Config)
         Config = Config or {}
         local title  = Config.Title or Config.Name or "仪表盘"
         local icon   = Config.Icon or Config.Logo or "rbxassetid://9904843409"
-        local qqLink = tostring(Config.QQGroup or "https://qm.qq.com/q/GDgGTuT66I")
+        local qqLink = tostring(Config.QQGroup or "https://qm.qq.com/q/YUuZa3dyOk")
 
         local supportedExecutors   = Config.SupportedExecutors or {}
         local unsupportedExecutors = Config.UnsupportedExecutors or {}
