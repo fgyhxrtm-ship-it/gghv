@@ -4177,7 +4177,7 @@ function Fenglib:CreateWindow(Config)
     LogoImage.Size = UDim2.new(0, 35, 0, 35)
     LogoImage.Position = UDim2.new(0, 10, 0.5, -17.5)
     LogoImage.BackgroundTransparency = 1
-    LogoImage.Image = formatIconAsset(IconAsset, "rbxassetid://81513785172649")
+    LogoImage.Image = formatIconAsset(IconAsset, "rbxassetid://71174877189170")
     LogoImage.Parent = HeadFrame
     AddToRegistry(LogoImage, "ImageColor3", "Text")
     Instance.new("UICorner", LogoImage).CornerRadius = UDim.new(0, 7)
@@ -4616,7 +4616,7 @@ function Fenglib:CreateWindow(Config)
     OpenButton.Position = UDim2.new(0.92, 0, 0.01, 0)
     OpenButton.Size = UDim2.new(0, 40, 0, 40)
     OpenButton.Active = true; OpenButton.Draggable = true
-    OpenButton.Image = "rbxassetid://81513785172649"
+    OpenButton.Image = "rbxassetid://71174877189170"
     OpenButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
     OpenButton.ImageTransparency = 0.15; OpenButton.ZIndex = 10
     Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(0, 8)
