@@ -1,5 +1,5 @@
 local WHITELIST_URL      = "https://pastefy.app/H9epeh3W/raw?rand="..math.random()
-local TARGET_SCRIPT_URL  = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/%E6%AC%BE%E8%84%9A%E6%9C%AC%E8%A2%AB%E9%81%97%E5%BC%83%E5%8A%A0%E5%AF%86.lua"
+local TARGET_SCRIPT_URL  = "https://github.com/fgyhxrtm-ship-it/gghv/blob/main/%E6%AC%BE%E8%84%9A%E6%9C%AC--%E8%A2%AB%E9%81%97%E5%BC%83--%E6%BA%90%E7%A0%81.lua"
 
 local MAX_ATTEMPTS          = 3
 local RETRY_DELAY            = 1
