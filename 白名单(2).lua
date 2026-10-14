@@ -1,4 +1,4 @@
-local WHITELIST_URL      = "https://pastefy.app/roJhRfWQ/raw?part=%E7%99%BD%E5%90%8D%E5%8D%95%E4%BA%BA%E5%91%98?rand="..math.random()
+local WHITELIST_URL      = "https://pastefy.app/H9epeh3W/raw?rand="..math.random()
 local TARGET_SCRIPT_URL  = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/%E6%AC%BE%E8%84%9A%E6%9C%AC--%E8%A2%AB%E9%81%97%E5%BC%83--%E7%99%BD%E5%90%8D%E5%8D%95%E7%89%88%E6%9C%AC.lua"
 
 local MAX_ATTEMPTS          = 3
