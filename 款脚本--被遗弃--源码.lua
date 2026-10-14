@@ -110,7 +110,7 @@ local lockTitle = "付费功能 - 需要购买"
 
 local Window = library:CreateWindow({
     Name = "款脚本",
-    SubName = "内部测试",
+    SubName = "欢迎使用此脚本",
     Keybind = Enum.KeyCode.RightShift,
     Logo = 83701039519151,
     Theme = "Dark"
@@ -131,7 +131,7 @@ Window:CreateHomeTab({
         Script = { Text = "更新日志", Icon = "no" },
     },
     Changelog = {
-        { Title = "4.0版本", Description = "" },
+        { Title = "4.0版本", Description = "推出了被遗弃脚本😍， Ui界面优化🥰" },
     },
 })
 
