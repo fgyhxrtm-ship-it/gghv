@@ -1,34 +1,50 @@
-local success, library = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/UI%20(1).lua"))()
-end)
+local LoaderEnvironment = (type(getgenv) == "function" and getgenv()) or _G
+local LoaderGuard = LoaderEnvironment.__KRGuard
 
-if not success then
-    print("欢迎使用")  
-    return
+local function GuardLoader(stage)
+    if LoaderEnvironment.__KRLoaderBlocked == true then
+        error("loader_stopped", 0)
+    end
+    if type(LoaderGuard) == "function" then
+        LoaderGuard(stage)
+    end
 end
 
 local function GuardedHttpGet(url)
-    return game:HttpGet(url)
+    GuardLoader("main_http_before")
+    local body = game:HttpGet(url)
+    GuardLoader("main_http_after")
+    return body
 end
 
 local function GuardedRequest(options)
+    GuardLoader("main_request_before")
     local requestFunction =
         (type(syn) == "table" and syn.request)
         or (type(fluxus) == "table" and fluxus.request)
         or (type(http) == "table" and http.request)
         or request
         or http_request
+
     if type(requestFunction) ~= "function" then
         error("request_unavailable", 0)
     end
-    return requestFunction(options)
+
+    local response = requestFunction(options)
+    GuardLoader("main_request_after")
+    return response
 end
 
 local function GuardedCompile(source)
     if type(source) ~= "string" or source == "" then
         error("remote_source_invalid", 0)
     end
+
+    GuardLoader("main_compile_before")
     local chunk = loadstring(source)
+    source = nil
+    GuardLoader("main_compile_after")
+
     if type(chunk) ~= "function" then
         error("remote_compile_failed", 0)
     end
@@ -38,19 +54,59 @@ end
 local function LoadRemote(url)
     local body = GuardedHttpGet(url)
     local chunk = GuardedCompile(body)
-    return chunk()
+    body = nil
+    GuardLoader("main_execute_before")
+    local result = chunk()
+    GuardLoader("main_execute_after")
+    return result
 end
 
 local function LoadRemoteRequest(options)
     local response = GuardedRequest(options)
     local body = type(response) == "table" and (response.Body or response.body) or nil
     local chunk = GuardedCompile(body)
-    return chunk()
+    body = nil
+    GuardLoader("main_execute_before")
+    local result = chunk()
+    GuardLoader("main_execute_after")
+    return result
 end
 
-local protectInterface = function(target)
-    return target
+local success, library = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/UI%20(1).lua"))()
+end)
+
+if not success then
+    print("欢迎使用")  
+    return
 end
+
+local function readWhitelistState()
+    local environment = nil
+
+    if type(getgenv) == "function" then
+        local ok, result = pcall(getgenv)
+        if ok and type(result) == "table" then
+            environment = result
+        end
+    end
+
+    local environmentAllowed = environment ~= nil and (
+        rawget(environment, "isWhitelisted") == true
+        or rawget(environment, "IsWhitelisted") == true
+    )
+
+    local globalAllowed = type(_G) == "table" and (
+        rawget(_G, "isWhitelisted") == true
+        or rawget(_G, "IsWhitelisted") == true
+    )
+
+    return environmentAllowed or globalAllowed
+end
+
+local isAuth = readWhitelistState()
+local isLocked = not isAuth
+local lockTitle = "付费功能 - 需要购买"
 
 local Window = library:CreateWindow({
     Name = "款脚本",
