@@ -3535,8 +3535,8 @@ do
     sectionItem:Toggle({
         Name = "无限喝可乐",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(infiniteCola)
             TrollState.InfiniteCola = infiniteCola
             if infiniteCola then
@@ -4657,8 +4657,8 @@ end
 
 Feng:Toggle({
     Name = "自动格挡",
-    Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
     Value = AutoBlockEnabled,
     Callback = function(value)
         AutoBlockEnabled = value
@@ -5117,8 +5117,8 @@ do
 
 Feng:Toggle({
     Name = "自动格挡",
-    Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
     Value = AutoBlockEnabled,
     Callback = function(value)
         AutoBlockEnabled = value
@@ -5129,16 +5129,16 @@ Feng:Toggle({
     Feng:Toggle({
         Name = "显示碰撞箱",
         Value = ShowHitboxVisual,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value) ShowHitboxVisual = value end
     })
 
     Feng:Slider({
         Name = "碰撞箱缩放",
         Value = { Min = 0.1, Max = 5, Default = HitboxScale },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Rounding = 2,
         Callback = function(value) HitboxScale = value end
     })
@@ -5146,8 +5146,8 @@ Feng:Toggle({
     Feng:Slider({
         Name = "碰撞箱Z偏移",
         Value = { Min = -5, Max = 5, Default = HitboxOffset },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Rounding = 2,
         Callback = function(value) HitboxOffset = value end
     })
@@ -5155,24 +5155,25 @@ Feng:Toggle({
     Feng:Slider({
         Name = "碰撞箱持续时间",
         Value = { Min = 0.1, Max = 5, Default = HitboxDuration },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Rounding = 2,
         Callback = function(value) HitboxDuration = value end
     })
 
     Feng:Toggle({
         Name = "自动出拳",
-        Value = AutoPunchEnabled,    Locked = true,
-    LockedTitle = "已锁定",
+        Value = AutoPunchEnabled,    
+        Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value) AutoPunchEnabled = value end
     })
 
     Feng:Toggle({
         Name = "瞄准出拳",
         Value = AimPunchEnabled,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             AimPunchEnabled = value
             toggleModule("Punch", value)
@@ -5183,8 +5184,8 @@ Feng:Toggle({
         Name = "瞄准模式",
         Values = { "相机+角色", "角色" },
         Value = (AimPunchMode == "CamChar") and "相机+角色" or "角色",
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             AimPunchMode = (value == "相机+角色") and "CamChar" or "Character"
             AimPunch.Mode = AimPunchMode
@@ -5334,8 +5335,8 @@ do
     Feng.ma:Toggle({
         Name = "自动特技",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             autoTrickEnabled = state
             if state then
@@ -5354,8 +5355,8 @@ do
     Feng.ma:Toggle({
         Name = "滑板控制",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             tbl.VeeronicaControl = state
             fn21(state and 6.5 or 0.65)
@@ -5397,8 +5398,8 @@ do
     Feng.ma:Toggle({
         Name = "防反弹",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             tbl.AntiRebound = state
             if state then
@@ -5428,8 +5429,8 @@ do
     Feng.ma:Toggle({
         Name = "自动刷滑板",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             autoFarmSk8Flag = state
             if state then
@@ -5465,8 +5466,8 @@ do
     Feng.se:Toggle({
         Name = "启用自定义属性",
         Value = false,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             customStatsEnabled = state
             applyCustomStats()
@@ -5477,8 +5478,8 @@ do
         Name = "滑板速度",
         Value = { Min = 1, Max = 10, Default = 1.15 },
         Rounding = 2,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             tbl.Sk8Speed = value
             if customStatsEnabled then
@@ -5492,8 +5493,8 @@ do
         Name = "技巧加速速度",
         Value = { Min = 1, Max = 15, Default = 1.42 },
         Rounding = 2,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             tbl.Sk8TrickAirborneSpeed = value
             if customStatsEnabled then
@@ -5506,8 +5507,8 @@ do
         Name = "撞击击退力度",
         Value = { Min = 10, Max = 150, Default = 11.9 },
         Rounding = 1,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             tbl.Sk8BumpPower = value
             if customStatsEnabled then
@@ -5521,8 +5522,8 @@ do
         Name = "每次技巧体力",
         Value = { Min = 0, Max = 100, Default = 4 },
         Rounding = 0,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             tbl.Sk8TrickStamina = value
             if customStatsEnabled then
@@ -5536,8 +5537,8 @@ do
         Name = "技巧冷却",
         Value = { Min = 0, Max = 5, Default = 1 },
         Rounding = 1,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(value)
             tbl.Sk8TrickCooldown = value
             if customStatsEnabled then
@@ -5777,8 +5778,8 @@ do
     Feng:Toggle({
         Name = "禁用约翰.多脚气伤害",
         Value = false,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             DisableToxicTrails = state
             UpdateInGame()
@@ -5861,8 +5862,8 @@ do
     Feng:Toggle({
         Name = "禁用约翰.多脚印大规模伤害",
         Value = false,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             DisableFootprints = state
             UpdateInGame()
@@ -6064,16 +6065,16 @@ do
     Feng.ex:Toggle({
         Name = "启用碰撞箱扩展",
         Value = false,
-                    Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) hitboxExtender.enabled = v end
     })
 
     Feng.ex:Slider({
         Name = "碰撞箱长度",
         Value = { Min = 0, Max = 50, Default = 10 },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) hitboxExtender.range = math.floor(v) end
     })
 end
@@ -6142,16 +6143,16 @@ do
     Feng.tr:Toggle({
         Name = "启用碰撞箱追踪",
         Value = false,
-                            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) hitboxTracker.enabled = v end
     })
 
     Feng.tr:Slider({
         Name = "追踪距离",
         Value = { Min = 10, Max = 200, Default = 60 },
-                            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) hitboxTracker.range = math.floor(v) end
     })
 end
@@ -6895,8 +6896,8 @@ do
     Feng:Toggle({
         Name = "击杀模式",
         Value = false,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(val)
             if val then startKillAll() else stopKillAll() end
         end
@@ -6906,8 +6907,8 @@ do
         Name = "传送模式",
         Value = false,
         
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(val)
             u2.killAllTeleport = val
             if val then u2.killAllFly = false end
@@ -6916,8 +6917,8 @@ do
 
     Feng:Button({
         Name = "切换目标",
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function() u5.currentTarget = getNearestSurvivor() end
     })
 
@@ -7028,8 +7029,8 @@ do
     Feng:Toggle({
         Name = "冲向幸存者",
         Value = false,
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(state)
             suction.enabled = state
             if state then startSuction() else stopSuction() end
@@ -7039,16 +7040,16 @@ do
     Feng:Slider({
         Name = "吸力强度",
         Value = { Min = 5, Max = 100, Default = 50 },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) suction.strength = v end
     })
 
     Feng:Slider({
         Name = "最大搜索距离",
         Value = { Min = 20, Max = 200, Default = 100 },
-            Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Callback = function(v) suction.maxDist = v end
     })
 
@@ -7550,8 +7551,8 @@ local Feng = FengYu:Section({
 
 Feng:Button({
     Name = "获取皮肤",
-    Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
     Callback = function()
         task.spawn(function()
             local player = game.Players.LocalPlayer
@@ -7588,8 +7589,8 @@ Feng:Button({
 
 Feng:Button({
     Name = "解锁所有动作",
-Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
     Callback = function()
         task.spawn(function()
             local player = game.Players.LocalPlayer
@@ -7610,8 +7611,8 @@ Locked = true,
 
 Feng:Button({
     Name = "解锁VIP权限",
-    Locked = true,
-    LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
     Callback = function()
         local localPlayer = game.Players.LocalPlayer
         localPlayer:SetAttribute("VIP", true)
@@ -7649,8 +7650,8 @@ local statsFields = {
 for statName, displayName in pairs(statsFields) do
     Feng:Input({
         Name = "设置 " .. displayName,
-        Locked = true,
-        LockedTitle = "已锁定",
+Locked = isLocked,
+TextLocked = lockTitle,
         Placeholder = "输入数值",
         Callback = function(value)
             pcall(function()
