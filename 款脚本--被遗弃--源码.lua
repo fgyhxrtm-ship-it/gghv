@@ -131,7 +131,7 @@ Window:CreateHomeTab({
         Script = { Text = "更新日志", Icon = "no" },
     },
     Changelog = {
-        { Title = "4.0版本", Description = "推出了被遗弃脚本😍， Ui界面优化🥰" },
+        { Title = "4.0版本", Description = "推出了被遗弃脚本😍， Ui界面优化🥰，添加了新的测试人员😛" },
     },
 })
 
@@ -163,6 +163,14 @@ Feng:Social({
     Cbn = "复制",
     Logo = "rbxassetid://133726756673211"
 })
+
+Feng:Social({ Name = "测试人员", SubName = " Pizza", SmlName = " QQ", copy = "3911763723", Cbn = "复制", Logo = "rbxassetid://74321980638899" })
+
+Feng:Social({ Name = "测试人员", SubName = "noob", SmlName = " QQ", copy = "1289069071", Cbn = "复制", Logo = "rbxassetid://97440914928707" })
+Feng:Social({ Name = "测试人员", SubName = "耄耋", SmlName = " 快手号", copy = "1420771195", Cbn = "复制", Logo = "rbxassetid://80607128221856" })
+Feng:Social({ Name = "测试人员", SubName = "noob45", SmlName = " QQ", copy = "3295626426", Cbn = "复制", Logo = "rbxassetid://118907524255142" })
+Feng:Social({ Name = "测试人员", SubName = "纾苇", SmlName = " QQ", copy = "3528796314", Cbn = "复制", Logo = "rbxassetid://77935840039458" })
+Feng:Social({ Name = "测试人员", SubName = "嵩", SmlName = " QQ", copy = "3629335696", Cbn = "复制", Logo = "rbxassetid://71291793625126" })
 
 Feng:Social({
     Name = "款脚本群",
