@@ -106,7 +106,7 @@ end
 
 local isAuth = readWhitelistState()
 local isLocked = not isAuth
-local lockTitle = "付费功能 - 需要购买"
+local lockTitle = "未解锁"
 
 local Window = library:CreateWindow({
     Name = "款脚本",
