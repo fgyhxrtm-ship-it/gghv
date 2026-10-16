@@ -164,49 +164,19 @@ Feng:Social({
     Logo = "rbxassetid://133726756673211"
 })
 
+Feng:Social({ Name = "款脚本创始人", SubName = "若白", SmlName = "QQ", copy = "2838596061", Cbn = "复制", Logo = "rbxassetid://133726756673211" })
 Feng:Social({ Name = "测试人员", SubName = " Pizza", SmlName = " QQ", copy = "3911763723", Cbn = "复制", Logo = "rbxassetid://74321980638899" })
-
+Feng:Social({ Name = "测试人员", SubName = "菜鸟", SmlName = "快手号", copy = "4358864292", Cbn = "复制", Logo = "rbxassetid://101841794686409" })
 Feng:Social({ Name = "测试人员", SubName = "noob", SmlName = " QQ", copy = "1289069071", Cbn = "复制", Logo = "rbxassetid://97440914928707" })
 Feng:Social({ Name = "测试人员", SubName = "耄耋", SmlName = " 快手号", copy = "1420771195", Cbn = "复制", Logo = "rbxassetid://80607128221856" })
 Feng:Social({ Name = "测试人员", SubName = "noob45", SmlName = " QQ", copy = "3295626426", Cbn = "复制", Logo = "rbxassetid://118907524255142" })
 Feng:Social({ Name = "测试人员", SubName = "纾苇", SmlName = " QQ", copy = "3528796314", Cbn = "复制", Logo = "rbxassetid://77935840039458" })
 Feng:Social({ Name = "测试人员", SubName = "嵩", SmlName = " QQ", copy = "3629335696", Cbn = "复制", Logo = "rbxassetid://71291793625126" })
-
-Feng:Social({
-    Name = "款脚本群",
-    SubName = "款脚本",
-    SmlName = "QQ群",
-    copy = "1056676792",
-    Cbn = "复制",
-    Logo = "rbxassetid://83701039519151"
-})
-
-Feng:Social({
-    Name = "殺脚本作者(思师)",
-    SubName = "风御 X",
-    SmlName = "QQ",
-    copy = "1926190957",
-    Cbn = "复制",
-    Logo = "rbxassetid://70554553650974"
-})
-
-Feng:Social({
-    Name = "殺脚本群",
-    SubName = "殺脚本",
-    SmlName = "QQ群",
-    copy = "958022428",
-    Cbn = "复制",
-    Logo = "rbxassetid://84830962019412"
-})
-
-Feng:Social({
-    Name = "款脚本前作者",
-    SubName = "付款",
-    SmlName = "QQ",
-    copy = "1973873103",
-    Cbn = "复制",
-    Logo = "rbxassetid://81807176674671"
-})
+Feng:Social({ Name = "测试人员", SubName = "林木", SmlName = " QQ", copy = "234667395", Cbn = "复制", Logo = "rbxassetid://93085584819970" })
+Feng:Social({ Name = "款脚本前作者", SubName = "付款", SmlName = "QQ", copy = "1973873103", Cbn = "复制", Logo = "rbxassetid://81807176674671" })
+Feng:Social({ Name = "款脚本群", SubName = "款脚本", SmlName = "QQ群", copy = "1056676792", Cbn = "复制", Logo = "rbxassetid://83701039519151" })
+Feng:Social({ Name = "殺脚本作者(思师)", SubName = "风御 X", SmlName = "QQ", copy = "1926190957", Cbn = "复制", Logo = "rbxassetid://70554553650974" })
+Feng:Social({ Name = "殺脚本群", SubName = "殺脚本", SmlName = "QQ群", copy = "958022428", Cbn = "复制", Logo = "rbxassetid://84830962019412" })
 
 Window:TabDivider()
 
