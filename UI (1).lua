@@ -5214,7 +5214,7 @@ local bgOptions = {
 
 settingsBuilder:Dropdown({
     Name = "切换背景图",
-    Values = { "默认背景", "猫羽雫背景", "访客1337背景", "约翰多背景", "斩首者背景", "忧郁背景" },
+    Values = { "默认背景", "猫羽雫", "访客1337", "尖叫者--约翰多", "斩首者里程碑四", "忧郁" },
     Value = "背景图 1", 
     Parent = SettingsPanel,
     Callback = function(selection)
