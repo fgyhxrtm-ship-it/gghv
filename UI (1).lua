@@ -5204,28 +5204,45 @@ function Fenglib:CreateWindow(Config)
         Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end,
     })
 local bgOptions = {
-    ["默认背景"] = "", 
-    ["猫羽雫"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
-      ["访客1337"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866885634.jpg",
-        ["尖叫者--约翰多"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
-          ["斩首者里程碑四"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867146923.jpg",
-    ["忧郁"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg"
+    ["默认背景"]     = "",
+    ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
+    ["访客1337背景"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866885634.jpg",
+    ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
+    ["斩首者背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867146923.jpg",
+    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
 settingsBuilder:Dropdown({
     Name = "切换背景图",
-    Values = { "默认背景", "猫羽雫", "访客1337", "尖叫者--约翰多", "斩首者里程碑四", "忧郁" },
-    Value = "背景图 1", 
+    Values = { "默认背景", "猫羽雫背景", "访客1337背景", "约翰多背景", "斩首者背景", "忧郁背景" },
+    Value = "默认背景",
     Parent = SettingsPanel,
     Callback = function(selection)
-        bgGradient.Enabled = false 
-        
-        local assetId = bgOptions[selection]
-        
-        if assetId then
-            bgImage.Visible = true
-            bgImage.Image = assetId
+        local url = bgOptions[selection]
+
+        -- 选默认背景 → 恢复渐变
+        if not url or url == "" then
+            bgGradient.Enabled = true
+            bgImage.Visible = false
+            bgImage.Image = ""
+            return
         end
+
+        -- 换成图片：停用渐变，异步下载
+        bgGradient.Enabled = false
+        task.spawn(function()
+            local asset = MediaManager:Image(url)
+            if asset and asset ~= "" then
+                bgImage.Visible = true
+                bgImage.Image = asset
+            else
+                -- 下载失败就回退到默认
+                bgImage.Visible = false
+                bgImage.Image = ""
+                bgGradient.Enabled = true
+                warn("[背景图] 下载失败:", selection)
+            end
+        end)
     end,
 })
 
