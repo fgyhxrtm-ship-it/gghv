@@ -5203,6 +5203,31 @@ function Fenglib:CreateWindow(Config)
         Parent = SettingsPanel,
         Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end,
     })
+local bgOptions = {
+    ["默认背景"] = "", 
+    ["猫羽雫"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
+      ["访客1337"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866885634.jpg",
+        ["尖叫者--约翰多"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
+          ["斩首者里程碑四"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867146923.jpg",
+    ["忧郁"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg"
+}
+
+settingsBuilder:Dropdown({
+    Name = "切换背景图",
+    Values = { "默认背景", "猫羽雫背景", "访客1337背景", "约翰多背景", "斩首者背景", "忧郁背景" },
+    Value = "背景图 1", 
+    Parent = SettingsPanel,
+    Callback = function(selection)
+        bgGradient.Enabled = false 
+        
+        local assetId = bgOptions[selection]
+        
+        if assetId then
+            bgImage.Visible = true
+            bgImage.Image = assetId
+        end
+    end,
+})
 
     SettingsList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         if SettingsPanel.Visible then
