@@ -307,6 +307,14 @@ function Fenglib:LoadConfig(path)
     return true
 end
 
+local function _hashStr(s)
+    local h = 5381
+    for i = 1, #s do
+        h = (h * 33 + string.byte(s, i)) % 4294967296
+    end
+    return string.format("%08x", h)
+end
+
 local MediaManager = {Folder = "FengMediaCache"}
 function MediaManager:SetFolder(f) self.Folder = f end
 function MediaManager:_init(sub)
@@ -335,7 +343,7 @@ function MediaManager:Audio(src, noDownload)
     local hs = HttpService
     local map = {}
     pcall(function() if isfile(mapPath) then local ok,d = pcall(hs.JSONDecode, hs, readfile(mapPath)); if ok and type(d) == "table" then map = d end end end)
-    local key = tostring(#src).."_"..src:sub(1,40):gsub("[^%w]","")
+    local key = tostring(#src).."_".._hashStr(src)
     if map[key] then
         local cp = dir.."/"..map[key]
         if isfile(cp) then local ok,a = pcall(getcustomasset, cp); if ok and a and a ~= "" then return a end end
@@ -378,7 +386,7 @@ function MediaManager:Video(src)
     local hs = HttpService
     local map = {}
     pcall(function() if isfile(mapPath) then local ok,d = pcall(hs.JSONDecode, hs, readfile(mapPath)); if ok and type(d) == "table" then map = d end end end)
-    local key = tostring(#src).."_"..src:sub(1,40):gsub("[^%w]","")
+    local key = tostring(#src).."_".._hashStr(src)
     if map[key] then
         local cp = dir.."/"..map[key]
         if isfile(cp) then local ok,a = pcall(getcustomasset, cp); if ok and a and a ~= "" then return a end end
@@ -419,7 +427,7 @@ function MediaManager:Image(src)
     local hs = HttpService
     local map = {}
     pcall(function() if isfile(mapPath) then local ok,d = pcall(hs.JSONDecode, hs, readfile(mapPath)); if ok and type(d) == "table" then map = d end end end)
-    local key = tostring(#src).."_"..src:sub(1,40):gsub("[^%w]","")
+    local key = tostring(#src).."_".._hashStr(src)
     if map[key] then
         local cp = dir.."/"..map[key]
         if isfile(cp) then local ok,a = pcall(getcustomasset, cp); if ok and a and a ~= "" then return a end end
