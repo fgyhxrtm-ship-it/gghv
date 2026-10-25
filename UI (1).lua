@@ -8,6 +8,68 @@ local TextService = game:GetService("TextService")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local SoundService = game:GetService("SoundService")
+
+-- ============================================================
+-- 全局点击音效与屏幕贴图控制
+-- ============================================================
+local EnableClickSound = false
+local EnableClickImage = false
+local START_SOUND_ID = "17687850030"
+local CLICK_IMAGE_ID = "87451785636482"
+
+local function PlayGlobalClickSound()
+    if not EnableClickSound then return end
+    pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. START_SOUND_ID
+        sound.Volume = 1
+        sound.Parent = SoundService
+        sound:Play()
+        task.delay(5, function()
+            if sound then sound:Destroy() end
+        end)
+    end)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if EnableClickImage then
+            local pg = LocalPlayer:WaitForChild("PlayerGui")
+            local screen = pg:FindFirstChild("ClickPointGui")
+            if not screen then
+                screen = Instance.new("ScreenGui")
+                screen.Name = "ClickPointGui"
+                screen.ResetOnSpawn = false
+                screen.IgnoreGuiInset = true
+                screen.DisplayOrder = 10000
+                screen.Parent = pg
+            end
+
+            local point = Instance.new("ImageLabel")
+            point.Size = UDim2.new(0, 30, 0, 30)
+            point.AnchorPoint = Vector2.new(0.5, 0.5)
+            point.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
+            point.BackgroundTransparency = 1
+            point.Image = "rbxassetid://" .. CLICK_IMAGE_ID
+            point.Parent = screen
+
+            local corner = Instance.new("UICorner", point)
+            corner.CornerRadius = UDim.new(1, 0)
+
+            TweenService:Create(point, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 60, 0, 60),
+                ImageTransparency = 1
+            }):Play()
+
+            task.delay(0.6, function() point:Destroy() end)
+        end
+
+        if EnableClickSound then
+            PlayGlobalClickSound()
+        end
+    end
+end)
 
 local defer = (task and task.defer) or function(fn)
     if type(fn) ~= "function" then return end
@@ -5211,6 +5273,25 @@ function Fenglib:CreateWindow(Config)
         Parent = SettingsPanel,
         Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end,
     })
+
+    settingsBuilder:Toggle({
+        Name = "点击屏幕贴图",
+        Value = false,
+        Parent = SettingsPanel,
+        Callback = function(v)
+            if Fenglib.SetClickImage then Fenglib.SetClickImage(v) end
+        end,
+    })
+
+    settingsBuilder:Toggle({
+        Name = "点击音效",
+        Value = false,
+        Parent = SettingsPanel,
+        Callback = function(v)
+            if Fenglib.SetClickSound then Fenglib.SetClickSound(v) end
+        end,
+    })
+
 local bgOptions = {
     ["默认背景"]     = "",
     ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
