@@ -5212,15 +5212,13 @@ function Fenglib:CreateWindow(Config)
 local bgOptions = {
     ["默认背景"]     = "",
     ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
-    ["访客1337背景"] = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866885634.jpg",
     ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
-    ["斩首者背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867146923.jpg",
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
 settingsBuilder:Dropdown({
     Name = "切换背景图",
-    Values = { "默认背景", "猫羽雫背景", "访客1337背景", "约翰多背景", "斩首者背景", "忧郁背景" },
+    Values = { "默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景" },
     Value = "默认背景",
     Parent = SettingsPanel,
     Callback = function(selection)
