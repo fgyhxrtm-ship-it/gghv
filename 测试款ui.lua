@@ -456,7 +456,6 @@ function MediaManager:Image(src)
     end
     return ""
 end
-
 local function createLockOverlay(parent, defaultTitle)
     local cornerRadius = UDim.new(0, 8)
     for _, child in ipairs(parent:GetChildren()) do
@@ -686,7 +685,6 @@ local function createSectionBuilder(parent, contentContainer, elementWidth, wind
     function self.SetVisible(v) Tile.Visible = v end
     return self
 end
-
 child.Slider = function(_, config)
     config = safeConfig(config)
     local sliderText = config.Name or ""
@@ -1086,6 +1084,7 @@ child.Dropdown = function(_, config)
     table.insert(WindowCleanup or {}, function() safeDisconnect(globalClickConn) end)
     return self
 end
+
 child.Keybind = function(_, config)
     config = safeConfig(config)
     local keyText = config.Name or ""
@@ -1225,7 +1224,7 @@ child.Input = function(_, config)
     local numeric = options.Numeric == true
     local maxLength = options.MaxLength or options.CharacterLimit
     local acceptedChars = options.AcceptedCharacters
-    local onChanged = options.OnChanged
+    local onChanged = options.OnChanged        
     local controlId = NewConfigId("Input", inputText)
     local parent = config.Parent or contentHolder
     local Tile = miRow(parent, 42)
@@ -1769,7 +1768,7 @@ child.Colorpicker = function(_, config)
     local lockFrame, lockLabel = createLockOverlay(Tile, lockedTitle)
     lockFrame.Visible = locked
     PreviewBtn.Active = not locked
-
+    
     local dialogOpen = false
     local function OpenColorpicker()
         if locked or dialogOpen then return end
@@ -4162,7 +4161,7 @@ end
             contentHolder.Visible = not state
             updateHeight(instant)
         end
-
+        
         local PoppedOut = false
         local PopOutFloat = nil
         local PopOutPlaceholder = nil
@@ -4733,7 +4732,7 @@ function Fenglib:CreateWindow(Config)
         Config = Config or {}
         local CustomIcon = Config.Icon
 
-        if Config.Name == nil then Config.Name = "殺脚本温馨提示" end
+        if Config.Name == nil then Config.Name = "款脚本温馨提示" end
         if Config.Content == nil then Config.Content = "你个废物会不会用通知" end
         if Config.Logo == nil then Config.Logo = "rbxasset://textures/ui/VerifiedBadgeNameIcon.png" end
         if Config.Icon == nil then Config.Icon = CustomIcon end
@@ -5131,433 +5130,153 @@ function Fenglib:CreateWindow(Config)
     BottomClick.Text = ""; BottomClick.AutoButtonColor = false
     BottomClick.Parent = BottomFrame
 
-    -- =========================================================================
-    -- 💎 全新设置面板 (UI背景、点击音效、贴图、完全还原图1/2/3的便当盒)
-    -- =========================================================================
     local SettingsPanel = Instance.new("Frame")
-    SettingsPanel.Name = "SettingsPanel"
-    SettingsPanel.Size = UDim2.new(0, 550, 0, 350)
+    SettingsPanel.Size = UDim2.new(0, 220, 0, 220)
     SettingsPanel.AnchorPoint = Vector2.new(0, 1)
     SettingsPanel.Position = UDim2.new(0, 18, 1, -54)
-    SettingsPanel.BackgroundColor3 = Color3.fromRGB(15, 17, 22)
-    SettingsPanel.BackgroundTransparency = 0.05
+    SettingsPanel.BackgroundColor3 = CurrentTheme.Main
+    SettingsPanel.BackgroundTransparency = 0.035
     SettingsPanel.BorderSizePixel = 0
     SettingsPanel.ClipsDescendants = true
     SettingsPanel.Visible = false
     SettingsPanel.ZIndex = 100
     SettingsPanel.Parent = MainFrame
-    Instance.new("UICorner", SettingsPanel).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", SettingsPanel).CornerRadius = UDim.new(0, 10)
     AddToRegistry(SettingsPanel, "BackgroundColor3", "Main")
 
     local SettingsStroke = Instance.new("UIStroke")
     SettingsStroke.Thickness = 1
-    SettingsStroke.Transparency = 0.5
-    SettingsStroke.Color = Color3.fromRGB(45, 48, 58)
+    SettingsStroke.Transparency = 0.65
+    SettingsStroke.Color = CurrentTheme.Stroke
     SettingsStroke.Parent = SettingsPanel
-    table.insert(ThemeListeners, function() SettingsStroke.Color = Color3.fromRGB(45, 48, 58) end)
+    table.insert(ThemeListeners, function() SettingsStroke.Color = CurrentTheme.Stroke end)
 
-    local NavBar = Instance.new("Frame")
-    NavBar.Size = UDim2.new(0, 140, 1, 0)
-    NavBar.BackgroundTransparency = 1
-    NavBar.Parent = SettingsPanel
+    local SettingsList = Instance.new("UIListLayout")
+    SettingsList.Padding = UDim.new(0, 4)
+    SettingsList.SortOrder = Enum.SortOrder.LayoutOrder
+    SettingsList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    SettingsList.Parent = SettingsPanel
 
-    local NavLine = Instance.new("Frame")
-    NavLine.Size = UDim2.new(0, 1, 0.9, 0)
-    NavLine.Position = UDim2.new(0, 140, 0.05, 0)
-    NavLine.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
-    NavLine.BorderSizePixel = 0
-    NavLine.Parent = SettingsPanel
+    local SettingsPad = Instance.new("UIPadding")
+    SettingsPad.PaddingTop = UDim.new(0, 6)
+    SettingsPad.PaddingBottom = UDim.new(0, 6)
+    SettingsPad.PaddingLeft = UDim.new(0, 4)
+    SettingsPad.PaddingRight = UDim.new(0, 4)
+    SettingsPad.Parent = SettingsPanel
 
-    local Pages = {}
-    local NavButtons = {}
+    local settingsBuilder = createSectionBuilder(SettingsPanel, SettingsPanel, 220, 1, Window)
 
-    local function CreateNavBtn(text, icon, pageKey, layoutOrder)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 40)
-        btn.Position = UDim2.new(0, 10, 0, 50 + (layoutOrder - 1) * 45)
-        btn.BackgroundTransparency = 1
-        btn.Text = ""
-        btn.AutoButtonColor = false
-        btn.Parent = NavBar
-
-        local indicator = Instance.new("Frame")
-        indicator.Size = UDim2.new(0, 3, 0, 20)
-        indicator.Position = UDim2.new(0, -10, 0.5, -10)
-        indicator.BackgroundColor3 = Color3.fromRGB(80, 140, 255)
-        indicator.BackgroundTransparency = 1
-        indicator.Parent = btn
-        Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
-
-        local icn = Instance.new("ImageLabel")
-        icn.Size = UDim2.fromOffset(18, 18)
-        icn.Position = UDim2.new(0, 10, 0.5, -9)
-        icn.BackgroundTransparency = 1
-        icn.Image = icon
-        icn.ImageColor3 = Color3.fromRGB(180, 180, 180)
-        icn.Parent = btn
-
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -40, 1, 0)
-        lbl.Position = UDim2.new(0, 38, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamMedium
-        lbl.Text = text
-        lbl.TextSize = 14
-        lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = btn
-        TextGradient:Skip(lbl)
-
-        NavButtons[pageKey] = { btn = btn, indicator = indicator, icn = icn, lbl = lbl }
-
-        btn.MouseButton1Click:Connect(function()
-            for k, data in pairs(NavButtons) do
-                if k == pageKey then
-                    Tween(data.indicator, {BackgroundTransparency = 0}, 0.2)
-                    data.icn.ImageColor3 = Color3.fromRGB(80, 140, 255)
-                    data.lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    if Pages[k] then Pages[k].Visible = true end
-                else
-                    Tween(data.indicator, {BackgroundTransparency = 1}, 0.2)
-                    data.icn.ImageColor3 = Color3.fromRGB(180, 180, 180)
-                    data.lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-                    if Pages[k] then Pages[k].Visible = false end
-                end
+    local userCard = settingsBuilder:UserFrame({
+        Name    = LocalPlayer.DisplayName,
+        Profile = Players:GetUserThumbnailAsync(LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150),
+        Expires = LocalPlayer.Name,
+        ButtonIcon = 9405931578,
+        Names        = { "副名字", "名字" },
+        Placeholders = { "输入副名字", "输入名字" },
+        Defaults     = { LocalPlayer.DisplayName, LocalPlayer.Name },
+        OnChanged = function(idx, text)
+            if idx == 1 then
+                AccountName.Text = (text ~= "" and text) or LocalPlayer.DisplayName
+            elseif idx == 2 then
+                ExpireLabel.Text = (text ~= "" and text) or LocalPlayer.Name
             end
-        end)
-    end
+        end,
+        Parent = SettingsPanel,
+    })
+    Window._userCard = userCard
 
-    CreateNavBtn("玩家卡片", "rbxassetid://6034684930", "Player", 1)
-    CreateNavBtn("UI 设置", "rbxassetid://6031090998", "UI", 2)
-    CreateNavBtn("特效设置", "rbxassetid://6031075933", "Fx", 3)
-
-    local ExitBtn = Instance.new("TextButton")
-    ExitBtn.Size = UDim2.new(1, -20, 0, 30)
-    ExitBtn.Position = UDim2.new(0, 10, 1, -40)
-    ExitBtn.BackgroundTransparency = 1
-    ExitBtn.Text = ""
-    ExitBtn.Parent = NavBar
-    local ExitIcon = Instance.new("ImageLabel")
-    ExitIcon.Size = UDim2.fromOffset(16, 16)
-    ExitIcon.Position = UDim2.new(0, 10, 0.5, -8)
-    ExitIcon.BackgroundTransparency = 1
-    ExitIcon.Image = "rbxassetid://6035047409"
-    ExitIcon.ImageColor3 = Color3.fromRGB(150, 150, 150)
-    ExitIcon.Parent = ExitBtn
-    local ExitLbl = Instance.new("TextLabel")
-    ExitLbl.Size = UDim2.new(1, -40, 1, 0)
-    ExitLbl.Position = UDim2.new(0, 38, 0, 0)
-    ExitLbl.BackgroundTransparency = 1
-    ExitLbl.Font = Enum.Font.GothamMedium
-    ExitLbl.Text = "滚出去"
-    ExitLbl.TextSize = 14
-    ExitLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
-    ExitLbl.TextXAlignment = Enum.TextXAlignment.Left
-    ExitLbl.Parent = ExitBtn
-
-    local ContentContainer = Instance.new("Frame")
-    ContentContainer.Size = UDim2.new(1, -150, 1, 0)
-    ContentContainer.Position = UDim2.new(0, 150, 0, 0)
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.Parent = SettingsPanel
-
-    local PagePlayer = Instance.new("Frame")
-    PagePlayer.Size = UDim2.fromScale(1, 1)
-    PagePlayer.BackgroundTransparency = 1
-    PagePlayer.Visible = false
-    PagePlayer.Parent = ContentContainer
-    Pages["Player"] = PagePlayer
-
-    local PTitle = Instance.new("TextLabel")
-    PTitle.Size = UDim2.new(1, -20, 0, 30)
-    PTitle.Position = UDim2.new(0, 20, 0, 20)
-    PTitle.BackgroundTransparency = 1
-    PTitle.Font = Enum.Font.GothamBold
-    PTitle.Text = "玩家卡片"
-    PTitle.TextColor3 = Color3.fromRGB(80, 140, 255)
-    PTitle.TextSize = 20
-    PTitle.TextXAlignment = Enum.TextXAlignment.Left
-    PTitle.Parent = PagePlayer
-
-    local PSub = Instance.new("TextLabel")
-    PSub.Size = UDim2.new(1, -20, 0, 15)
-    PSub.Position = UDim2.new(0, 20, 0, 50)
-    PSub.BackgroundTransparency = 1
-    PSub.Font = Enum.Font.Gotham
-    PSub.Text = "修改左下角显示的名字与头像"
-    PSub.TextColor3 = Color3.fromRGB(150, 150, 150)
-    PSub.TextSize = 12
-    PSub.TextXAlignment = Enum.TextXAlignment.Left
-    PSub.Parent = PagePlayer
-
-    local AvatarFrame = Instance.new("Frame")
-    AvatarFrame.Size = UDim2.new(0, 200, 0, 120)
-    AvatarFrame.Position = UDim2.new(0, 20, 0, 90)
-    AvatarFrame.BackgroundTransparency = 1
-    AvatarFrame.Parent = PagePlayer
-
-    local BigAvatar = Instance.new("ImageLabel")
-    BigAvatar.Size = UDim2.fromOffset(70, 70)
-    BigAvatar.Position = UDim2.fromOffset(0, 25)
-    BigAvatar.BackgroundTransparency = 1
-    BigAvatar.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-    BigAvatar.Parent = AvatarFrame
-    Instance.new("UICorner", BigAvatar).CornerRadius = UDim.new(1, 0)
-
-    local NameDisplay = Instance.new("TextLabel")
-    NameDisplay.Size = UDim2.new(1, -80, 0, 20)
-    NameDisplay.Position = UDim2.new(0, 85, 0, 30)
-    NameDisplay.BackgroundTransparency = 1
-    NameDisplay.Font = Enum.Font.GothamBold
-    NameDisplay.Text = LocalPlayer.DisplayName
-    NameDisplay.TextColor3 = Color3.fromRGB(80, 140, 255)
-    NameDisplay.TextSize = 16
-    NameDisplay.TextXAlignment = Enum.TextXAlignment.Left
-    NameDisplay.Parent = AvatarFrame
-
-    local SubNameDisplay = Instance.new("TextLabel")
-    SubNameDisplay.Size = UDim2.new(1, -80, 0, 20)
-    SubNameDisplay.Position = UDim2.new(0, 85, 0, 55)
-    SubNameDisplay.BackgroundTransparency = 1
-    SubNameDisplay.Font = Enum.Font.Gotham
-    SubNameDisplay.Text = LocalPlayer.Name
-    SubNameDisplay.TextColor3 = Color3.fromRGB(200, 200, 200)
-    SubNameDisplay.TextSize = 14
-    SubNameDisplay.TextXAlignment = Enum.TextXAlignment.Left
-    SubNameDisplay.Parent = AvatarFrame
-
-    local GearBtn = Instance.new("ImageLabel")
-    GearBtn.Size = UDim2.fromOffset(24, 24)
-    GearBtn.Position = UDim2.new(1, -30, 0.5, -12)
-    GearBtn.BackgroundTransparency = 1
-    GearBtn.Image = "rbxassetid://6031265976"
-    GearBtn.ImageColor3 = Color3.fromRGB(150, 150, 150)
-    GearBtn.Parent = AvatarFrame
-
-    local PageUI = Instance.new("Frame")
-    PageUI.Size = UDim2.fromScale(1, 1)
-    PageUI.BackgroundTransparency = 1
-    PageUI.Visible = false
-    PageUI.Parent = ContentContainer
-    Pages["UI"] = PageUI
-
-    local UITitle = Instance.new("TextLabel")
-    UITitle.Size = UDim2.new(1, -20, 0, 30)
-    UITitle.Position = UDim2.new(0, 20, 0, 20)
-    UITitle.BackgroundTransparency = 1
-    UITitle.Font = Enum.Font.GothamBold
-    UITitle.Text = "UI设置"
-    UITitle.TextColor3 = Color3.fromRGB(80, 140, 255)
-    UITitle.TextSize = 20
-    UITitle.TextXAlignment = Enum.TextXAlignment.Left
-    UITitle.Parent = PageUI
-
-    local uiBuilder = createSectionBuilder(PageUI, PageUI, 300, 1, Window)
-    
-    local UIList = Instance.new("Frame")
-    UIList.Size = UDim2.new(1, -40, 1, -90)
-    UIList.Position = UDim2.new(0, 20, 0, 70)
-    UIList.BackgroundTransparency = 1
-    UIList.Parent = PageUI
-
-    uiBuilder:Dropdown({
+    settingsBuilder:Dropdown({
         Name = "主题",
         Values = { "Dark", "Charcoal", "AMOLED" },
         Value = "Dark",
-        Parent = UIList,
+        Parent = SettingsPanel,
         Callback = function(v) Fenglib:SetTheme(v) end,
     })
 
-    uiBuilder:Keybind({
-        Name = "菜单绑定键",
-        Default = Enum.KeyCode.RightShift,
-        Mode = "Toggle",
-        Parent = UIList,
-        Callback = function(state) Window:SetKeybind(state and Enum.KeyCode.RightShift or Enum.KeyCode.Unknown) end
-    })
-
-    uiBuilder:Toggle({
+    settingsBuilder:Toggle({
         Name = "文字渐变",
         Value = true,
-        Parent = UIList,
+        Parent = SettingsPanel,
         Callback = function(enabled) TextGradient:SetEnabled(enabled) end,
     })
 
-    uiBuilder:Toggle({
+    settingsBuilder:Toggle({
         Name = "自定义光标",
         Value = false,
-        Parent = UIList,
+        Parent = SettingsPanel,
         Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end,
     })
-    
-    uiBuilder:Toggle({
-        Name = "点击屏幕贴图",
-        Value = _G.KuanClickFxEnabled ~= false,
-        Parent = UIList,
-        Callback = function(enabled) _G.KuanClickFxEnabled = enabled end,
-    })
+local bgOptions = {
+    ["默认背景"]     = "",
+    ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
+    ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
+    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
+}
 
-    uiBuilder:Toggle({
-        Name = "启动音效",
-        Value = _G.KuanStartSoundEnabled ~= false,
-        Parent = UIList,
-        Callback = function(enabled) _G.KuanStartSoundEnabled = enabled end,
-    })
+settingsBuilder:Dropdown({
+    Name = "切换背景图",
+    Values = { "默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景" },
+    Value = "默认背景",
+    Parent = SettingsPanel,
+    Callback = function(selection)
+        local url = bgOptions[selection]
 
-    local bgOptions = {
-        ["默认背景"]     = "",
-        ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
-        ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
-        ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
-    }
+        -- 选默认背景 → 恢复渐变
+        if not url or url == "" then
+            bgGradient.Enabled = true
+            bgImage.Visible = false
+            bgImage.Image = ""
+            return
+        end
 
-    uiBuilder:Dropdown({
-        Name = "切换背景图",
-        Values = { "默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景" },
-        Value = "默认背景",
-        Parent = UIList,
-        Callback = function(selection)
-            local url = bgOptions[selection]
-            if not url or url == "" then
-                bgGradient.Enabled = true
+        -- 换成图片：停用渐变，异步下载
+        bgGradient.Enabled = false
+        task.spawn(function()
+            local asset = MediaManager:Image(url)
+            if asset and asset ~= "" then
+                bgImage.Visible = true
+                bgImage.Image = asset
+            else
+                -- 下载失败就回退到默认
                 bgImage.Visible = false
                 bgImage.Image = ""
-                return
-            end
-            bgGradient.Enabled = false
-            task.spawn(function()
-                local asset = MediaManager:Image(url)
-                if asset and asset ~= "" then
-                    bgImage.Visible = true
-                    bgImage.Image = asset
-                else
-                    bgImage.Visible = false
-                    bgImage.Image = ""
-                    bgGradient.Enabled = true
-                end
-            end)
-        end,
-    })
-
-    local PageFx = Instance.new("Frame")
-    PageFx.Size = UDim2.fromScale(1, 1)
-    PageFx.BackgroundTransparency = 1
-    PageFx.Visible = false
-    PageFx.Parent = ContentContainer
-    Pages["Fx"] = PageFx
-
-    local FxTitle = Instance.new("TextLabel")
-    FxTitle.Size = UDim2.new(1, -20, 0, 30)
-    FxTitle.Position = UDim2.new(0, 20, 0, 20)
-    FxTitle.BackgroundTransparency = 1
-    FxTitle.Font = Enum.Font.GothamBold
-    FxTitle.Text = "特效设置"
-    FxTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FxTitle.TextSize = 20
-    FxTitle.TextXAlignment = Enum.TextXAlignment.Left
-    FxTitle.Parent = PageFx
-
-    local FxSub = Instance.new("TextLabel")
-    FxSub.Size = UDim2.new(1, -20, 0, 15)
-    FxSub.Position = UDim2.new(0, 20, 0, 50)
-    FxSub.BackgroundTransparency = 1
-    FxSub.Font = Enum.Font.Gotham
-    FxSub.Text = "选择视觉效果"
-    FxSub.TextColor3 = Color3.fromRGB(150, 150, 150)
-    FxSub.TextSize = 12
-    FxSub.TextXAlignment = Enum.TextXAlignment.Left
-    FxSub.Parent = PageFx
-
-    local FxColLeft = Instance.new("Frame")
-    FxColLeft.Size = UDim2.new(0.5, -25, 0, 220)
-    FxColLeft.Position = UDim2.new(0, 20, 0, 80)
-    FxColLeft.BackgroundTransparency = 1
-    FxColLeft.Parent = PageFx
-    local FxL = Instance.new("UIListLayout")
-    FxL.Padding = UDim.new(0, 15); FxL.Parent = FxColLeft
-
-    local FxColRight = Instance.new("Frame")
-    FxColRight.Size = UDim2.new(0.5, -25, 0, 220)
-    FxColRight.Position = UDim2.new(0.5, 5, 0, 80)
-    FxColRight.BackgroundTransparency = 1
-    FxColRight.Parent = PageFx
-    local FxR = Instance.new("UIListLayout")
-    FxR.Padding = UDim.new(0, 15); FxR.Parent = FxColRight
-
-    local function CreateBentoCard(parent, name, icon, height, isTop, color)
-        local card = Instance.new("TextButton")
-        card.Size = UDim2.new(1, 0, 0, height)
-        card.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-        card.BackgroundTransparency = 0.2
-        card.BorderSizePixel = 0
-        card.Text = ""
-        card.AutoButtonColor = false
-        card.Parent = parent
-        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
-
-        local cStroke = Instance.new("UIStroke")
-        cStroke.Color = color
-        cStroke.Thickness = 1.5
-        cStroke.Transparency = 1
-        cStroke.Parent = card
-
-        local indicator = Instance.new("Frame")
-        indicator.Size = UDim2.new(0, 4, 0, height - (isTop and 15 or 40))
-        indicator.Position = UDim2.new(0, 0, 0.5, isTop and 0 or -8)
-        indicator.AnchorPoint = Vector2.new(0, 0.5)
-        indicator.BackgroundColor3 = color
-        indicator.BackgroundTransparency = 1
-        indicator.Parent = card
-        Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
-
-        local icn = Instance.new("ImageLabel")
-        icn.Size = UDim2.fromOffset(16, 16)
-        icn.Position = isTop and UDim2.new(0, 12, 0.5, -8) or UDim2.new(0, 12, 1, -30)
-        icn.BackgroundTransparency = 1
-        icn.Image = icon
-        icn.ImageColor3 = Color3.fromRGB(200, 200, 200)
-        icn.Parent = card
-
-        local txt = Instance.new("TextLabel")
-        txt.Size = UDim2.new(1, -40, 20, 0)
-        txt.Position = isTop and UDim2.new(0, 36, 0.5, -10) or UDim2.new(0, 36, 1, -30)
-        txt.BackgroundTransparency = 1
-        txt.Font = Enum.Font.GothamMedium
-        txt.Text = name
-        txt.TextColor3 = Color3.fromRGB(200, 200, 200)
-        txt.TextSize = 13
-        txt.TextXAlignment = Enum.TextXAlignment.Left
-        txt.Parent = card
-        TextGradient:Skip(txt)
-
-        local isSel = false
-        card.MouseButton1Click:Connect(function()
-            isSel = not isSel
-            if isSel then
-                Tween(card, {BackgroundTransparency = 0, BackgroundColor3 = Color3.fromRGB(25, 30, 45)}, 0.2)
-                Tween(cStroke, {Transparency = 0}, 0.2)
-                Tween(indicator, {BackgroundTransparency = 0}, 0.2)
-                txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-                icn.ImageColor3 = Color3.fromRGB(255, 255, 255)
-            else
-                Tween(card, {BackgroundTransparency = 0.2, BackgroundColor3 = Color3.fromRGB(20, 22, 30)}, 0.2)
-                Tween(cStroke, {Transparency = 1}, 0.2)
-                Tween(indicator, {BackgroundTransparency = 1}, 0.2)
-                txt.TextColor3 = Color3.fromRGB(200, 200, 200)
-                icn.ImageColor3 = Color3.fromRGB(200, 200, 200)
+                bgGradient.Enabled = true
+                warn("[背景图] 下载失败:", selection)
             end
         end)
-    end
+    end,
+})
 
-    CreateBentoCard(FxColLeft, "代码雨", "rbxassetid://6031075933", 45, true, Color3.fromRGB(80, 140, 255))
-    CreateBentoCard(FxColRight, "下雨", "rbxassetid://6031075933", 45, true, Color3.fromRGB(80, 140, 255))
-    CreateBentoCard(FxColLeft, "花瓣", "rbxassetid://6031075933", 120, false, Color3.fromRGB(255, 100, 200))
-    CreateBentoCard(FxColRight, "星星", "rbxassetid://6031075933", 120, false, Color3.fromRGB(80, 140, 255))
+-- ============================================================
+-- 新增两个开关：点击屏幕贴图 / 启动音效
+-- 状态存在 _G.KuanClickFxEnabled / _G.KuanStartSoundEnabled
+-- 主脚本读这两个全局标志决定是否放行点击贴图和启动音效
+-- ============================================================
+settingsBuilder:Toggle({
+    Name = "点击屏幕贴图",
+    Value = _G.KuanClickFxEnabled ~= false,
+    Parent = SettingsPanel,
+    Callback = function(enabled)
+        _G.KuanClickFxEnabled = enabled
+    end,
+})
 
-    NavButtons["Fx"].indicator.BackgroundTransparency = 0
-    NavButtons["Fx"].icn.ImageColor3 = Color3.fromRGB(80, 140, 255)
-    NavButtons["Fx"].lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Pages["Fx"].Visible = true
+settingsBuilder:Toggle({
+    Name = "启动音效",
+    Value = _G.KuanStartSoundEnabled ~= false,
+    Parent = SettingsPanel,
+    Callback = function(enabled)
+        _G.KuanStartSoundEnabled = enabled
+    end,
+})
+
+    SettingsList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if SettingsPanel.Visible then
+            local h = SettingsList.AbsoluteContentSize.Y + 12
+            Tween(SettingsPanel, {Size = UDim2.new(0, 220, 0, h)}, 0.2)
+        end
+    end)
 
     local settingsOpen = false
     local outsideConn = nil
@@ -5571,7 +5290,7 @@ function Fenglib:CreateWindow(Config)
     local function closeSettings()
         settingsOpen = false
         if outsideConn then outsideConn:Disconnect(); outsideConn = nil end
-        Tween(SettingsPanel, {BackgroundTransparency = 1, Size = UDim2.new(0, 550, 0, 0)}, 0.18)
+        Tween(SettingsPanel, {BackgroundTransparency = 1, Size = UDim2.new(0, 220, 0, 0)}, 0.18)
         Tween(SettingsStroke, {Transparency = 1}, 0.18)
         task.delay(0.2, function()
             if not settingsOpen then SettingsPanel.Visible = false end
@@ -5581,9 +5300,10 @@ function Fenglib:CreateWindow(Config)
     local function openSettings()
         settingsOpen = true
         SettingsPanel.Visible = true
-        SettingsPanel.Size = UDim2.new(0, 550, 0, 0)
-        Tween(SettingsPanel, {BackgroundTransparency = 0.05, Size = UDim2.new(0, 550, 0, 350)}, 0.2)
-        Tween(SettingsStroke, {Transparency = 0.5}, 0.2)
+        SettingsPanel.Size = UDim2.new(0, 220, 0, 0)
+        local h = SettingsList.AbsoluteContentSize.Y + 12
+        Tween(SettingsPanel, {BackgroundTransparency = 0.035, Size = UDim2.new(0, 220, 0, h)}, 0.2)
+        Tween(SettingsStroke, {Transparency = 0.65}, 0.2)
         if outsideConn then outsideConn:Disconnect() end
         local settingsMouse = LocalPlayer:GetMouse()
         outsideConn = UserInputService.InputBegan:Connect(function(input, gpe)
@@ -5605,9 +5325,6 @@ function Fenglib:CreateWindow(Config)
     end)
     BottomClick.MouseButton1Click:Connect(function()
         if settingsOpen then closeSettings() else openSettings() end
-    end)
-    ExitBtn.MouseButton1Click:Connect(function()
-        closeSettings()
     end)
 
     local RightMenuFrame = Instance.new("Frame")
@@ -6795,6 +6512,7 @@ function Fenglib:CreateWindow(Config)
             local function Need(name, ok)
                 if not ok then table.insert(missing, name) end
             end
+
             Need("cloneref",          (cloneref or clonereference))
             Need("getgenv",           getgenv)
             Need("gethui",            gethui)
@@ -6811,156 +6529,526 @@ function Fenglib:CreateWindow(Config)
             Need("request",           (syn and syn.request) or http_request or request)
             Need("sethiddenproperty", sethiddenproperty)
             Need("setscriptable",     setscriptable)
+
             return (#missing == 0), missing
         end
+
         local _ObsidianOK, _ObsidianMissing = _CheckObsidianCompat()
+
         local changelog = Config.ScriptChangelog or Config.Changelog or {}
         local segCfg    = type(Config.Segments) == "table" and Config.Segments or {}
+
         local TabBuilder = Window:Tab(title, icon)
         local tabState = Window._tabs[#Window._tabs]
         if not tabState then return TabBuilder end
         local Page = tabState.page
         local PageContent = Page:FindFirstChildWhichIsA("Frame")
         if not PageContent then return TabBuilder end
+
         local Player       = LocalPlayer
         local ExecutorName = "Unknown"
         local Region       = "未知"
         local TimeFunction = RunService:IsRunning() and time or os.clock
         local StartedAt    = TimeFunction()
-        pcall(function() if identifyexecutor then local ok, name = pcall(identifyexecutor); if ok and name then ExecutorName = tostring(name) end end end)
-        pcall(function() Region = game:GetService("LocalizationService"):GetCountryRegionForPlayerAsync(Player) end)
-        local function Greeting() local h = os.date("*t").hour; if h >= 4 and h < 12 then return "早上好啊" end; if h >= 12 and h < 19 then return "今天过得怎么样？" end; if h >= 19 and h <= 23 then return "做个好梦吧" end; return "该睡觉了小馋猫" end
-        local function Elapsed() local e = math.max(0, TimeFunction() - StartedAt); if e < 60 then return math.floor(e) .. " 秒" end; if e < 3600 then return math.floor(e / 60) .. " 分" end; return math.floor(e / 3600) .. " 小时" end
+
+        pcall(function()
+            if identifyexecutor then
+                local ok, name = pcall(identifyexecutor)
+                if ok and name then ExecutorName = tostring(name) end
+            end
+        end)
+        pcall(function()
+            Region = game:GetService("LocalizationService"):GetCountryRegionForPlayerAsync(Player)
+        end)
+
+        local function Greeting()
+            local h = os.date("*t").hour
+            if h >= 4 and h < 12 then return "早上好啊" end
+            if h >= 12 and h < 19 then return "今天过得怎么样？" end
+            if h >= 19 and h <= 23 then return "做个好梦吧" end
+            return "该睡觉了小馋猫"
+        end
+
+        local function Elapsed()
+            local e = math.max(0, TimeFunction() - StartedAt)
+            if e < 60 then return math.floor(e) .. " 秒" end
+            if e < 3600 then return math.floor(e / 60) .. " 分" end
+            return math.floor(e / 3600) .. " 小时"
+        end
+
         local function Panel(parent, size, pos)
-            local p = Instance.new("Frame"); p.BackgroundColor3 = CurrentTheme.Top; p.BackgroundTransparency = 0.25; p.BorderSizePixel = 0; p.ClipsDescendants = true; p.Size = size; p.Position = pos or UDim2.fromOffset(0, 0); p.Parent = parent
+            local p = Instance.new("Frame")
+            p.BackgroundColor3 = CurrentTheme.Top
+            p.BackgroundTransparency = 0.25
+            p.BorderSizePixel = 0
+            p.ClipsDescendants = true
+            p.Size = size
+            p.Position = pos or UDim2.fromOffset(0, 0)
+            p.Parent = parent
             Instance.new("UICorner", p).CornerRadius = UDim.new(0, 8)
-            local s = Instance.new("UIStroke"); s.Color = CurrentTheme.Stroke; s.Transparency = 0.68; s.Parent = p
-            table.insert(ThemeListeners, function() p.BackgroundColor3 = CurrentTheme.Top; s.Color = CurrentTheme.Stroke end)
+            local s = Instance.new("UIStroke")
+            s.Color = CurrentTheme.Stroke
+            s.Transparency = 0.68
+            s.Parent = p
+            table.insert(ThemeListeners, function()
+                p.BackgroundColor3 = CurrentTheme.Top
+                s.Color = CurrentTheme.Stroke
+            end)
             return p
         end
+
         local function MakeText(parent, txt, sz, bold, transp)
-            local l = Instance.new("TextLabel"); l.BackgroundTransparency = 1; l.BorderSizePixel = 0; l.Font = bold and Enum.Font.GothamBold or Enum.Font.GothamMedium; l.Text = tostring(txt or ""); l.TextColor3 = CurrentTheme.Text; l.TextSize = sz or 12; l.TextTransparency = transp or 0; l.TextXAlignment = Enum.TextXAlignment.Left; l.TextYAlignment = Enum.TextYAlignment.Center; l.TextTruncate = Enum.TextTruncate.AtEnd; l.Parent = parent
-            AddToRegistry(l, "TextColor3", "Text"); return l
+            local l = Instance.new("TextLabel")
+            l.BackgroundTransparency = 1
+            l.BorderSizePixel = 0
+            l.Font = bold and Enum.Font.GothamBold or Enum.Font.GothamMedium
+            l.Text = tostring(txt or "")
+            l.TextColor3 = CurrentTheme.Text
+            l.TextSize = sz or 12
+            l.TextTransparency = transp or 0
+            l.TextXAlignment = Enum.TextXAlignment.Left
+            l.TextYAlignment = Enum.TextYAlignment.Center
+            l.TextTruncate = Enum.TextTruncate.AtEnd
+            l.Parent = parent
+            AddToRegistry(l, "TextColor3", "Text")
+            return l
         end
+
         local function MakeIcon(parent, src, sz, color)
-            local i = Instance.new("ImageLabel"); i.BackgroundTransparency = 1; i.BorderSizePixel = 0; i.Size = UDim2.fromOffset(sz or 16, sz or 16); i.ScaleType = Enum.ScaleType.Fit; i.ImageColor3 = color or CurrentTheme.Text
-            if type(src) == "number" then i.Image = "rbxassetid://" .. src elseif type(src) == "string" and src ~= "" then if tonumber(src) then i.Image = "rbxassetid://" .. src elseif src:match("^rbxasset") or src:match("^http") then i.Image = src else i.Image = "rbxassetid://" .. src end end
-            i.Parent = parent; table.insert(ThemeListeners, function() i.ImageColor3 = CurrentTheme.Text end); return i
+            local i = Instance.new("ImageLabel")
+            i.BackgroundTransparency = 1
+            i.BorderSizePixel = 0
+            i.Size = UDim2.fromOffset(sz or 16, sz or 16)
+            i.ScaleType = Enum.ScaleType.Fit
+            i.ImageColor3 = color or CurrentTheme.Text
+            if type(src) == "number" then
+                i.Image = "rbxassetid://" .. src
+            elseif type(src) == "string" and src ~= "" then
+                if tonumber(src) then
+                    i.Image = "rbxassetid://" .. src
+                elseif src:match("^rbxasset") or src:match("^http") then
+                    i.Image = src
+                else
+                    i.Image = "rbxassetid://" .. src
+                end
+            end
+            i.Parent = parent
+            table.insert(ThemeListeners, function()
+                i.ImageColor3 = CurrentTheme.Text
+            end)
+            return i
         end
+
         local function FitTextToWidth(Label, BaseSize, MinSize, Wrapped)
-            BaseSize = BaseSize or Label.TextSize; MinSize = MinSize or 8; Label.TextSize = BaseSize
+            BaseSize = BaseSize or Label.TextSize
+            MinSize = MinSize or 8
+            Label.TextSize = BaseSize
             defer(function()
                 if not Label or not Label.Parent then return end
-                local W = math.max(1, Label.AbsoluteSize.X); local H = math.max(1, Label.AbsoluteSize.Y); local sz = BaseSize
-                while sz > MinSize do local b = TextService:GetTextSize(Label.Text, sz, Label.Font, Wrapped and Vector2.new(W, math.huge) or Vector2.new(math.huge, H)); if b.X <= W and (not Wrapped or b.Y <= H) then break end; sz = sz - 1 end
+                local W = math.max(1, Label.AbsoluteSize.X)
+                local H = math.max(1, Label.AbsoluteSize.Y)
+                local sz = BaseSize
+                while sz > MinSize do
+                    local b = TextService:GetTextSize(Label.Text, sz, Label.Font,
+                        Wrapped and Vector2.new(W, math.huge) or Vector2.new(math.huge, H))
+                    if b.X <= W and (not Wrapped or b.Y <= H) then break end
+                    sz = sz - 1
+                end
                 Label.TextSize = sz
             end)
         end
-        local Root = Instance.new("Frame"); Root.Name = "HomeDashboard"; Root.Size = UDim2.new(1, -8, 0, 0); Root.AutomaticSize = Enum.AutomaticSize.Y; Root.BackgroundTransparency = 1; Root.BorderSizePixel = 0; Root.Parent = PageContent
-        local RL = Instance.new("UIListLayout"); RL.Padding = UDim.new(0, 8); RL.SortOrder = Enum.SortOrder.LayoutOrder; RL.Parent = Root
-        local Profile = Panel(Root, UDim2.new(1, 0, 0, 74)); Profile.LayoutOrder = 1
-        local AvBox = Panel(Profile, UDim2.fromOffset(58, 58), UDim2.fromOffset(10, 8)); AvBox.BackgroundTransparency = 0.2
-        local Av = Instance.new("ImageLabel"); Av.BackgroundTransparency = 1; Av.BorderSizePixel = 0; Av.Size = UDim2.fromScale(1, 1); Av.Image = Players:GetUserThumbnailAsync(Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150); Av.Parent = AvBox
+
+        local Root = Instance.new("Frame")
+        Root.Name = "HomeDashboard"
+        Root.Size = UDim2.new(1, -8, 0, 0)
+        Root.AutomaticSize = Enum.AutomaticSize.Y
+        Root.BackgroundTransparency = 1
+        Root.BorderSizePixel = 0
+        Root.Parent = PageContent
+        local RL = Instance.new("UIListLayout")
+        RL.Padding = UDim.new(0, 8)
+        RL.SortOrder = Enum.SortOrder.LayoutOrder
+        RL.Parent = Root
+
+        local Profile = Panel(Root, UDim2.new(1, 0, 0, 74))
+        Profile.LayoutOrder = 1
+
+        local AvBox = Panel(Profile, UDim2.fromOffset(58, 58), UDim2.fromOffset(10, 8))
+        AvBox.BackgroundTransparency = 0.2
+        local Av = Instance.new("ImageLabel")
+        Av.BackgroundTransparency = 1
+        Av.BorderSizePixel = 0
+        Av.Size = UDim2.fromScale(1, 1)
+        Av.Image = Players:GetUserThumbnailAsync(Player.UserId,
+            Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+        Av.Parent = AvBox
         Instance.new("UICorner", Av).CornerRadius = UDim.new(0, 8)
-        local Welcome = MakeText(Profile, "你好，" .. Player.DisplayName, 18, true, 0); Welcome.Position = UDim2.new(0, 82, 0, 17); Welcome.Size = UDim2.new(1, -98, 0, 24); TextGradient:Add(Welcome)
-        local UserLbl = MakeText(Profile, "@" .. Player.Name, 12, false, 0.35); UserLbl.Position = UDim2.new(0, 82, 0, 41); UserLbl.Size = UDim2.new(1, -98, 0, 18)
-        local SegBox = Panel(Root, UDim2.new(1, 0, 0, 48)); SegBox.LayoutOrder = 2
-        local SL = Instance.new("UIListLayout"); SL.FillDirection = Enum.FillDirection.Horizontal; SL.HorizontalAlignment = Enum.HorizontalAlignment.Center; SL.VerticalAlignment = Enum.VerticalAlignment.Center; SL.SortOrder = Enum.SortOrder.LayoutOrder; SL.Padding = UDim.new(0, 8); SL.Parent = SegBox
-        local CH = Instance.new("Frame"); CH.BackgroundTransparency = 1; CH.BorderSizePixel = 0; CH.Size = UDim2.new(1, 0, 0, 0); CH.AutomaticSize = Enum.AutomaticSize.Y; CH.LayoutOrder = 3; CH.Parent = Root
-        local function NewPage(parent) local f = Instance.new("Frame"); f.BackgroundTransparency = 1; f.BorderSizePixel = 0; f.Size = UDim2.new(1, 0, 0, 0); f.AutomaticSize = Enum.AutomaticSize.Y; f.Visible = false; f.Parent = parent; local l = Instance.new("UIListLayout"); l.Padding = UDim.new(0, 8); l.SortOrder = Enum.SortOrder.LayoutOrder; l.Parent = f; return f, l end
-        local DetailsPage = NewPage(CH); local ScriptPage  = NewPage(CH)
+
+        local Welcome = MakeText(Profile, "你好，" .. Player.DisplayName, 18, true, 0)
+        Welcome.Position = UDim2.new(0, 82, 0, 17)
+        Welcome.Size = UDim2.new(1, -98, 0, 24)
+        TextGradient:Add(Welcome)
+
+        local UserLbl = MakeText(Profile, "@" .. Player.Name, 12, false, 0.35)
+        UserLbl.Position = UDim2.new(0, 82, 0, 41)
+        UserLbl.Size = UDim2.new(1, -98, 0, 18)
+
+        local SegBox = Panel(Root, UDim2.new(1, 0, 0, 48))
+        SegBox.LayoutOrder = 2
+        local SL = Instance.new("UIListLayout")
+        SL.FillDirection = Enum.FillDirection.Horizontal
+        SL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        SL.VerticalAlignment = Enum.VerticalAlignment.Center
+        SL.SortOrder = Enum.SortOrder.LayoutOrder
+        SL.Padding = UDim.new(0, 8)
+        SL.Parent = SegBox
+
+        local CH = Instance.new("Frame")
+        CH.BackgroundTransparency = 1
+        CH.BorderSizePixel = 0
+        CH.Size = UDim2.new(1, 0, 0, 0)
+        CH.AutomaticSize = Enum.AutomaticSize.Y
+        CH.LayoutOrder = 3
+        CH.Parent = Root
+
+        local function NewPage(parent)
+            local f = Instance.new("Frame")
+            f.BackgroundTransparency = 1
+            f.BorderSizePixel = 0
+            f.Size = UDim2.new(1, 0, 0, 0)
+            f.AutomaticSize = Enum.AutomaticSize.Y
+            f.Visible = false
+            f.Parent = parent
+            local l = Instance.new("UIListLayout")
+            l.Padding = UDim.new(0, 8)
+            l.SortOrder = Enum.SortOrder.LayoutOrder
+            l.Parent = f
+            return f, l
+        end
+
+        local DetailsPage = NewPage(CH)
+        local ScriptPage  = NewPage(CH)
+
         local segButtons = {}
         local function MakeSegment(segName, text, ic)
-            local lblW = math.max(60, TextService:GetTextSize(tostring(text), 12, Enum.Font.GothamBold, Vector2.new(math.huge, math.huge)).X + 4); local btnW = 36 + lblW + 14
-            local bt = Panel(SegBox, UDim2.fromOffset(btnW, 34)); bt.BackgroundTransparency = 0.55
-            local icn = MakeIcon(bt, ic, 16, CurrentTheme.Text); icn.Position = UDim2.new(0, 12, 0.5, -8); icn.ImageTransparency = 0.3
-            local lbl = MakeText(bt, text, 12, true, 0.25); lbl.Position = UDim2.new(0, 36, 0, 0); lbl.Size = UDim2.new(1, -44, 1, 0)
+            local lblW = math.max(60,
+                TextService:GetTextSize(tostring(text), 12, Enum.Font.GothamBold,
+                    Vector2.new(math.huge, math.huge)).X + 4)
+            local btnW = 36 + lblW + 14
+            local bt = Panel(SegBox, UDim2.fromOffset(btnW, 34))
+            bt.BackgroundTransparency = 0.55
+
+            local icn = MakeIcon(bt, ic, 16, CurrentTheme.Text)
+            icn.Position = UDim2.new(0, 12, 0.5, -8)
+            icn.ImageTransparency = 0.3
+
+            local lbl = MakeText(bt, text, 12, true, 0.25)
+            lbl.Position = UDim2.new(0, 36, 0, 0)
+            lbl.Size = UDim2.new(1, -44, 1, 0)
+
             segButtons[segName] = { Root = bt, Icon = icn, Label = lbl }
-            local hit = Instance.new("TextButton"); hit.Size = UDim2.fromScale(1, 1); hit.BackgroundTransparency = 1; hit.Text = ""; hit.AutoButtonColor = false; hit.Parent = bt
+
+            local hit = Instance.new("TextButton")
+            hit.Size = UDim2.fromScale(1, 1)
+            hit.BackgroundTransparency = 1
+            hit.Text = ""
+            hit.AutoButtonColor = false
+            hit.Parent = bt
+
             hit.MouseButton1Click:Connect(function()
-                DetailsPage.Visible = (segName == "Details"); ScriptPage.Visible  = (segName == "Script")
-                for n, s in pairs(segButtons) do local active = (n == segName); Tween(s.Root, {BackgroundTransparency = active and 0.08 or 0.55}, 0.2); s.Icon.ImageColor3  = active and CurrentTheme.Accent or CurrentTheme.Text; s.Label.TextColor3  = active and CurrentTheme.Accent or CurrentTheme.Text; s.Label.TextTransparency = active and 0 or 0.25 end
+                DetailsPage.Visible = (segName == "Details")
+                ScriptPage.Visible  = (segName == "Script")
+                for n, s in pairs(segButtons) do
+                    local active = (n == segName)
+                    Tween(s.Root, {BackgroundTransparency = active and 0.08 or 0.55}, 0.2)
+                    s.Icon.ImageColor3  = active and CurrentTheme.Accent or CurrentTheme.Text
+                    s.Label.TextColor3  = active and CurrentTheme.Accent or CurrentTheme.Text
+                    s.Label.TextTransparency = active and 0 or 0.25
+                end
             end)
         end
-        local segSpec = { Details = segCfg.Details or segCfg[1] or {}, Script  = segCfg.Script  or segCfg[2] or {} }
+
+        local segSpec = {
+            Details = segCfg.Details or segCfg[1] or {},
+            Script  = segCfg.Script  or segCfg[2] or {},
+        }
         local showDetails = segSpec.Details.Show ~= false and Config.ShowDetailsSegment ~= false
         local showScript  = segSpec.Script.Show  ~= false and Config.ShowScriptSegment  ~= false
-        if showDetails then MakeSegment("Details", segSpec.Details.Text or segSpec.Details.Name or Config.DetailsText or "详情信息", segSpec.Details.Icon or Config.DetailsIcon or 9904843409) end
-        if showScript then MakeSegment("Script", segSpec.Script.Text or segSpec.Script.Name or Config.ScriptText or "脚本更新", segSpec.Script.Icon or Config.ScriptIcon or 9904743710) end
-        local DW = Instance.new("Frame"); DW.BackgroundTransparency = 1; DW.BorderSizePixel = 0; DW.Size = UDim2.new(1, 0, 0, 0); DW.AutomaticSize = Enum.AutomaticSize.Y; DW.LayoutOrder = 1; DW.Parent = DetailsPage
-        local DWL = Instance.new("UIListLayout"); DWL.FillDirection = Enum.FillDirection.Horizontal; DWL.SortOrder = Enum.SortOrder.LayoutOrder; DWL.Padding = UDim.new(0, 8); DWL.Parent = DW
-        local LeftCol = Instance.new("Frame"); LeftCol.BackgroundTransparency = 1; LeftCol.BorderSizePixel = 0; LeftCol.Size = UDim2.new(0.52, -4, 0, 0); LeftCol.AutomaticSize = Enum.AutomaticSize.Y; LeftCol.LayoutOrder = 1; LeftCol.Parent = DW
-        local LCL = Instance.new("UIListLayout"); LCL.Padding = UDim.new(0, 8); LCL.SortOrder = Enum.SortOrder.LayoutOrder; LCL.Parent = LeftCol
-        local RightCol = Instance.new("Frame"); RightCol.BackgroundTransparency = 1; RightCol.BorderSizePixel = 0; RightCol.Size = UDim2.new(0.48, -4, 0, 0); RightCol.AutomaticSize = Enum.AutomaticSize.Y; RightCol.LayoutOrder = 2; RightCol.Parent = DW
-        local RCL = Instance.new("UIListLayout"); RCL.Padding = UDim.new(0, 8); RCL.SortOrder = Enum.SortOrder.LayoutOrder; RCL.Parent = RightCol
-        local ServerCard = Panel(LeftCol, UDim2.new(1, 0, 0, 162)); ServerCard.LayoutOrder = 1
-        local SvrT = MakeText(ServerCard, "服务器", 15, true, 0); SvrT.Position = UDim2.fromOffset(16, 12); SvrT.Size = UDim2.new(1, -32, 0, 18)
-        local SvrS = MakeText(ServerCard, "当前会话的信息", 10, false, 0.48); SvrS.Position = UDim2.fromOffset(16, 30); SvrS.Size = UDim2.new(1, -32, 0, 14)
+
+        if showDetails then
+            MakeSegment("Details",
+                segSpec.Details.Text or segSpec.Details.Name or Config.DetailsText or "详情信息",
+                segSpec.Details.Icon or Config.DetailsIcon or 9904843409)
+        end
+        if showScript then
+            MakeSegment("Script",
+                segSpec.Script.Text or segSpec.Script.Name or Config.ScriptText or "脚本更新",
+                segSpec.Script.Icon or Config.ScriptIcon or 9904743710)
+        end
+
+        local DW = Instance.new("Frame")
+        DW.BackgroundTransparency = 1
+        DW.BorderSizePixel = 0
+        DW.Size = UDim2.new(1, 0, 0, 0)
+        DW.AutomaticSize = Enum.AutomaticSize.Y
+        DW.LayoutOrder = 1
+        DW.Parent = DetailsPage
+        local DWL = Instance.new("UIListLayout")
+        DWL.FillDirection = Enum.FillDirection.Horizontal
+        DWL.SortOrder = Enum.SortOrder.LayoutOrder
+        DWL.Padding = UDim.new(0, 8)
+        DWL.Parent = DW
+
+        local LeftCol = Instance.new("Frame")
+        LeftCol.BackgroundTransparency = 1
+        LeftCol.BorderSizePixel = 0
+        LeftCol.Size = UDim2.new(0.52, -4, 0, 0)
+        LeftCol.AutomaticSize = Enum.AutomaticSize.Y
+        LeftCol.LayoutOrder = 1
+        LeftCol.Parent = DW
+        local LCL = Instance.new("UIListLayout")
+        LCL.Padding = UDim.new(0, 8)
+        LCL.SortOrder = Enum.SortOrder.LayoutOrder
+        LCL.Parent = LeftCol
+
+        local RightCol = Instance.new("Frame")
+        RightCol.BackgroundTransparency = 1
+        RightCol.BorderSizePixel = 0
+        RightCol.Size = UDim2.new(0.48, -4, 0, 0)
+        RightCol.AutomaticSize = Enum.AutomaticSize.Y
+        RightCol.LayoutOrder = 2
+        RightCol.Parent = DW
+        local RCL = Instance.new("UIListLayout")
+        RCL.Padding = UDim.new(0, 8)
+        RCL.SortOrder = Enum.SortOrder.LayoutOrder
+        RCL.Parent = RightCol
+
+        local ServerCard = Panel(LeftCol, UDim2.new(1, 0, 0, 162))
+        ServerCard.LayoutOrder = 1
+
+        local SvrT = MakeText(ServerCard, "服务器", 15, true, 0)
+        SvrT.Position = UDim2.fromOffset(16, 12)
+        SvrT.Size = UDim2.new(1, -32, 0, 18)
+
+        local SvrS = MakeText(ServerCard, "当前会话的信息", 10, false, 0.48)
+        SvrS.Position = UDim2.fromOffset(16, 30)
+        SvrS.Size = UDim2.new(1, -32, 0, 14)
+
         local StatLabels = {}
         local function MakeStat(parent, ttl, val, xScale, y, wScale)
-            local st = Panel(parent, UDim2.new(wScale, -6, 0, 42), UDim2.new(xScale, 3, 0, y)); st.BackgroundTransparency = 0.3
-            local t = MakeText(st, ttl, 10, true, 0.13); t.Position = UDim2.fromOffset(10, 6); t.Size = UDim2.new(1, -20, 0, 13)
-            local v = MakeText(st, val, 10, false, 0.35); v.Position = UDim2.fromOffset(10, 20); v.Size = UDim2.new(1, -20, 0, 13)
+            local st = Panel(parent, UDim2.new(wScale, -6, 0, 42),
+                UDim2.new(xScale, 3, 0, y))
+            st.BackgroundTransparency = 0.3
+            local t = MakeText(st, ttl, 10, true, 0.13)
+            t.Position = UDim2.fromOffset(10, 6)
+            t.Size = UDim2.new(1, -20, 0, 13)
+            local v = MakeText(st, val, 10, false, 0.35)
+            v.Position = UDim2.fromOffset(10, 20)
+            v.Size = UDim2.new(1, -20, 0, 13)
             return v
         end
+
         StatLabels.Players  = MakeStat(ServerCard, "玩家",       "0 人在玩", 0,    58, 0.5)
         StatLabels.Capacity = MakeStat(ServerCard, "最大玩家数", tostring(Players.MaxPlayers).." 人", 0.5, 58, 0.5)
         StatLabels.Latency  = MakeStat(ServerCard, "延迟",       "...",      0,    104, 0.33)
         StatLabels.Region   = MakeStat(ServerCard, "地区", tostring(Region), 0.33, 104, 0.34)
         StatLabels.Runtime  = MakeStat(ServerCard, "时长",   "0 秒",     0.67, 104, 0.33)
-        local QQCard = Panel(LeftCol, UDim2.new(1, 0, 0, 68)); QQCard.LayoutOrder = 2; QQCard.BackgroundColor3 = CurrentTheme.Accent; QQCard.BackgroundTransparency = 0.18
-        table.insert(ThemeListeners, function() QQCard.BackgroundColor3 = CurrentTheme.Accent end)
-        local QGrad = Instance.new("UIGradient"); QGrad.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, CurrentTheme.Accent),ColorSequenceKeypoint.new(1, Color3.fromRGB(13, 17, 22))}); QGrad.Parent = QQCard
-        local QTitle = MakeText(QQCard, "QQ 群", 20, true, 0); QTitle.Position = UDim2.fromOffset(18, 12); QTitle.Size = UDim2.new(1, -36, 0, 25)
-        local QSub = MakeText(QQCard, qqLink ~= "" and "点击复制 QQ 群链接" or "未配置 QQ 群链接", 12, false, 0.25); QSub.Position = UDim2.fromOffset(18, 38); QSub.Size = UDim2.new(1, -36, 0, 18)
-        local QClick = Instance.new("TextButton"); QClick.Size = UDim2.fromScale(1, 1); QClick.BackgroundTransparency = 1; QClick.Text = ""; QClick.AutoButtonColor = false; QClick.Parent = QQCard
-        QClick.MouseButton1Click:Connect(function() if qqLink == "" then return end; pcall(function() if setclipboard then setclipboard(qqLink) elseif toclipboard then toclipboard(qqLink) elseif set_clipboard then set_clipboard(qqLink) end end) end)
-        local ExecutorCard = Panel(RightCol, UDim2.new(1, 0, 0, 92)); ExecutorCard.LayoutOrder = 1
-        local ExecStatus = "未知"; local ExecColor  = CurrentTheme.Accent
-        if _ObsidianOK then ExecStatus = "你的注入器完全兼容"; ExecColor  = Color3.fromRGB(45, 180, 115) elseif #_ObsidianMissing <= 3 then ExecStatus = "部分兼容：缺少 " .. table.concat(_ObsidianMissing, ", ") .. "（只能使用UI的部分功能）"; ExecColor  = Color3.fromRGB(230, 170, 60) else ExecStatus = "不兼容殺脚本：缺少 " .. table.concat(_ObsidianMissing, ", "); ExecColor  = Color3.fromRGB(220, 70, 70) end
-        ExecutorCard.BackgroundColor3 = ExecColor; ExecutorCard.BackgroundTransparency = 0.18
-        local EGrad = Instance.new("UIGradient"); EGrad.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, ExecColor),ColorSequenceKeypoint.new(0.58, Color3.fromRGB(13, 17, 22)),ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))}); EGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.08),NumberSequenceKeypoint.new(0.55, 0),NumberSequenceKeypoint.new(1, 0)}); EGrad.Parent = ExecutorCard
-        local ETitle = MakeText(ExecutorCard, ExecutorName, 17, true, 0); ETitle.Position = UDim2.fromOffset(18, 16); ETitle.Size = UDim2.new(1, -36, 0, 22)
-        local ESub = MakeText(ExecutorCard, ExecStatus, 12, false, 0.15); ESub.Position = UDim2.fromOffset(18, 42); ESub.Size = UDim2.new(1, -36, 0, 40); ESub.TextWrapped = true; ESub.TextTruncate = Enum.TextTruncate.None; ESub.TextYAlignment = Enum.TextYAlignment.Top
+
+        local QQCard = Panel(LeftCol, UDim2.new(1, 0, 0, 68))
+        QQCard.LayoutOrder = 2
+        QQCard.BackgroundColor3 = CurrentTheme.Accent
+        QQCard.BackgroundTransparency = 0.18
+        table.insert(ThemeListeners, function()
+            QQCard.BackgroundColor3 = CurrentTheme.Accent
+        end)
+        local QGrad = Instance.new("UIGradient")
+        QGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, CurrentTheme.Accent),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(13, 17, 22)),
+        })
+        QGrad.Parent = QQCard
+
+        local QTitle = MakeText(QQCard, "QQ 群", 20, true, 0)
+        QTitle.Position = UDim2.fromOffset(18, 12)
+        QTitle.Size = UDim2.new(1, -36, 0, 25)
+
+        local QSub = MakeText(QQCard,
+            qqLink ~= "" and "点击复制 QQ 群链接" or "未配置 QQ 群链接",
+            12, false, 0.25)
+        QSub.Position = UDim2.fromOffset(18, 38)
+        QSub.Size = UDim2.new(1, -36, 0, 18)
+
+        local QClick = Instance.new("TextButton")
+        QClick.Size = UDim2.fromScale(1, 1)
+        QClick.BackgroundTransparency = 1
+        QClick.Text = ""
+        QClick.AutoButtonColor = false
+        QClick.Parent = QQCard
+        QClick.MouseButton1Click:Connect(function()
+            if qqLink == "" then return end
+            pcall(function()
+                if setclipboard then setclipboard(qqLink)
+                elseif toclipboard then toclipboard(qqLink)
+                elseif set_clipboard then set_clipboard(qqLink) end
+            end)
+        end)
+
+        local ExecutorCard = Panel(RightCol, UDim2.new(1, 0, 0, 92))
+        ExecutorCard.LayoutOrder = 1
+
+        local ExecStatus = "未知"
+        local ExecColor  = CurrentTheme.Accent
+
+        if _ObsidianOK then
+            ExecStatus = "你的注入器完全兼容"
+            ExecColor  = Color3.fromRGB(45, 180, 115)
+        elseif #_ObsidianMissing <= 3 then
+            ExecStatus = "部分兼容：缺少 " .. table.concat(_ObsidianMissing, ", ") .. "（只能使用UI的部分功能）"
+            ExecColor  = Color3.fromRGB(230, 170, 60)
+        else
+            ExecStatus = "不兼容款脚本：缺少 " .. table.concat(_ObsidianMissing, ", ")
+            ExecColor  = Color3.fromRGB(220, 70, 70)
+        end
+
+        ExecutorCard.BackgroundColor3 = ExecColor
+        ExecutorCard.BackgroundTransparency = 0.18
+        local EGrad = Instance.new("UIGradient")
+        EGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, ExecColor),
+            ColorSequenceKeypoint.new(0.58, Color3.fromRGB(13, 17, 22)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
+        })
+        EGrad.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.08),
+            NumberSequenceKeypoint.new(0.55, 0),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        EGrad.Parent = ExecutorCard
+
+        local ETitle = MakeText(ExecutorCard, ExecutorName, 17, true, 0)
+        ETitle.Position = UDim2.fromOffset(18, 16)
+        ETitle.Size = UDim2.new(1, -36, 0, 22)
+
+        local ESub = MakeText(ExecutorCard, ExecStatus, 12, false, 0.15)
+        ESub.Position = UDim2.fromOffset(18, 42)
+        ESub.Size = UDim2.new(1, -36, 0, 40)
+        ESub.TextWrapped = true
+        ESub.TextTruncate = Enum.TextTruncate.None
+        ESub.TextYAlignment = Enum.TextYAlignment.Top
         FitTextToWidth(ESub, 12, 8, true)
-        local FriendsCard = Panel(RightCol, UDim2.new(1, 0, 0, 166)); FriendsCard.LayoutOrder = 2
-        local FTitle = MakeText(FriendsCard, "好友", 16, true, 0); FTitle.Position = UDim2.fromOffset(16, 12); FTitle.Size = UDim2.new(1, -32, 0, 20)
-        local FSub = MakeText(FriendsCard, "查看你的好友现在在做什么", 10, false, 0.48); FSub.Position = UDim2.fromOffset(16, 32); FSub.Size = UDim2.new(1, -32, 0, 14)
+
+        local FriendsCard = Panel(RightCol, UDim2.new(1, 0, 0, 166))
+        FriendsCard.LayoutOrder = 2
+
+        local FTitle = MakeText(FriendsCard, "好友", 16, true, 0)
+        FTitle.Position = UDim2.fromOffset(16, 12)
+        FTitle.Size = UDim2.new(1, -32, 0, 20)
+
+        local FSub = MakeText(FriendsCard, "查看你的好友现在在做什么", 10, false, 0.48)
+        FSub.Position = UDim2.fromOffset(16, 32)
+        FSub.Size = UDim2.new(1, -32, 0, 14)
+
         local FriendLabels = {}
         FriendLabels.InServer = MakeStat(FriendsCard, "本服务器", "...", 0,   58,  0.5)
         FriendLabels.Offline  = MakeStat(FriendsCard, "离线",     "...", 0.5, 58,  0.5)
         FriendLabels.Online   = MakeStat(FriendsCard, "在线",     "...", 0,   104, 0.5)
         FriendLabels.All      = MakeStat(FriendsCard, "全部",     "...", 0.5, 104, 0.5)
+
         local function FillChangelog(Page, Entries, EmptyText)
-            local Holder = Panel(Page, UDim2.new(1, 0, 0, 40)); Holder.AutomaticSize = Enum.AutomaticSize.Y
-            local L = Instance.new("UIListLayout"); L.Padding = UDim.new(0, 8); L.SortOrder = Enum.SortOrder.LayoutOrder; L.Parent = Holder
-            local P = Instance.new("UIPadding"); P.PaddingTop = UDim.new(0, 12); P.PaddingBottom = UDim.new(0, 12); P.PaddingLeft = UDim.new(0, 12); P.PaddingRight = UDim.new(0, 12); P.Parent = Holder
-            if type(Entries) ~= "table" or #Entries <= 0 then local em = MakeText(Holder, EmptyText, 13, false, 0.25); em.Size = UDim2.new(1, 0, 0, 26); return end
+            local Holder = Panel(Page, UDim2.new(1, 0, 0, 40))
+            Holder.AutomaticSize = Enum.AutomaticSize.Y
+            local L = Instance.new("UIListLayout")
+            L.Padding = UDim.new(0, 8)
+            L.SortOrder = Enum.SortOrder.LayoutOrder
+            L.Parent = Holder
+            local P = Instance.new("UIPadding")
+            P.PaddingTop = UDim.new(0, 12)
+            P.PaddingBottom = UDim.new(0, 12)
+            P.PaddingLeft = UDim.new(0, 12)
+            P.PaddingRight = UDim.new(0, 12)
+            P.Parent = Holder
+
+            if type(Entries) ~= "table" or #Entries <= 0 then
+                local em = MakeText(Holder, EmptyText, 13, false, 0.25)
+                em.Size = UDim2.new(1, 0, 0, 26)
+                return
+            end
+
             for i, Entry in ipairs(Entries) do
-                local Item = Panel(Holder, UDim2.new(1, 0, 0, 62)); Item.LayoutOrder = i
-                local t = MakeText(Item, tostring(Entry.Title or Entry.Name or ("更新 " .. i)), 14, true, 0); t.Position = UDim2.fromOffset(14, 10); t.Size = UDim2.new(1, -28, 0, 18)
-                local d = MakeText(Item, tostring(Entry.Description or Entry.Content or Entry.Date or ""), 11, false, 0.3); d.Position = UDim2.fromOffset(14, 30); d.Size = UDim2.new(1, -28, 0, 22); d.TextWrapped = true; d.TextTruncate = Enum.TextTruncate.None; d.TextYAlignment = Enum.TextYAlignment.Top
+                local Item = Panel(Holder, UDim2.new(1, 0, 0, 62))
+                Item.LayoutOrder = i
+                local t = MakeText(Item,
+                    tostring(Entry.Title or Entry.Name or ("更新 " .. i)),
+                    14, true, 0)
+                t.Position = UDim2.fromOffset(14, 10)
+                t.Size = UDim2.new(1, -28, 0, 18)
+                local d = MakeText(Item,
+                    tostring(Entry.Description or Entry.Content or Entry.Date or ""),
+                    11, false, 0.3)
+                d.Position = UDim2.fromOffset(14, 30)
+                d.Size = UDim2.new(1, -28, 0, 22)
+                d.TextWrapped = true
+                d.TextTruncate = Enum.TextTruncate.None
+                d.TextYAlignment = Enum.TextYAlignment.Top
             end
         end
+
         FillChangelog(ScriptPage, changelog, "暂无脚本更新")
-        local FriendCache = { All = "...", Online = "...", Offline = "...", InServer = "...", Cooldown = 0 }
+
+        local FriendCache = {
+            All = "...", Online = "...", Offline = "...", InServer = "...",
+            Cooldown = 0,
+        }
         local function UpdateFriends()
-            if FriendCache.Cooldown > 0 then FriendCache.Cooldown = FriendCache.Cooldown - 1; return end
+            if FriendCache.Cooldown > 0 then
+                FriendCache.Cooldown = FriendCache.Cooldown - 1
+                return
+            end
             FriendCache.Cooldown = 30
             task.spawn(function()
-                local done = false; task.delay(8, function() done = true end)
+                local done = false
+                task.delay(8, function() done = true end)
                 local OnlineFriends, TotalFriends, InServer = 0, 0, 0
-                pcall(function() OnlineFriends = #Player:GetFriendsOnline() end); if done then return end
-                pcall(function() local Pages = Players:GetFriendsAsync(Player.UserId); while true do if done then return end; for _, Data in ipairs(Pages:GetCurrentPage()) do TotalFriends = TotalFriends + 1; if Players:FindFirstChild(Data.Username) then InServer = InServer + 1 end end; if Pages.IsFinished then break end; Pages:AdvanceToNextPageAsync() end end)
-                if done then return end; done = true
-                FriendCache.All = tostring(TotalFriends) .. " 个好友"; FriendCache.Online = tostring(OnlineFriends) .. " 个好友"; FriendCache.Offline = tostring(math.max(TotalFriends - OnlineFriends, 0)) .. " 个好友"; FriendCache.InServer = InServer > 0 and tostring(InServer) .. " 个好友" or "无好友"
+                pcall(function()
+                    OnlineFriends = #Player:GetFriendsOnline()
+                end)
+                if done then return end
+                pcall(function()
+                    local Pages = Players:GetFriendsAsync(Player.UserId)
+                    while true do
+                        if done then return end
+                        for _, Data in ipairs(Pages:GetCurrentPage()) do
+                            TotalFriends = TotalFriends + 1
+                            if Players:FindFirstChild(Data.Username) then
+                                InServer = InServer + 1
+                            end
+                        end
+                        if Pages.IsFinished then break end
+                        Pages:AdvanceToNextPageAsync()
+                    end
+                end)
+                if done then return end
+                done = true
+                FriendCache.All      = tostring(TotalFriends) .. " 个好友"
+                FriendCache.Online   = tostring(OnlineFriends) .. " 个好友"
+                FriendCache.Offline  = tostring(math.max(TotalFriends - OnlineFriends, 0)) .. " 个好友"
+                FriendCache.InServer = InServer > 0 and tostring(InServer) .. " 个好友" or "无好友"
             end)
         end
+
         local Accumulator = 0
         local function UpdateHome(dt)
-            Accumulator = Accumulator + (dt or 0); if Accumulator < 0.5 then return end; Accumulator = 0
-            local Ping = "..."; pcall(function() Ping = tostring(math.floor((Player:GetNetworkPing() * 1000) + 0.5)) .. "ms" end)
-            Welcome.Text = "你好，" .. Player.DisplayName; UserLbl.Text = Greeting() .. " | @" .. Player.Name
+            Accumulator = Accumulator + (dt or 0)
+            if Accumulator < 0.5 then return end
+            Accumulator = 0
+
+            local Ping = "..."
+            pcall(function()
+                Ping = tostring(math.floor((Player:GetNetworkPing() * 1000) + 0.5)) .. "ms"
+            end)
+
+            Welcome.Text = "你好，" .. Player.DisplayName
+            UserLbl.Text = Greeting() .. " | @" .. Player.Name
             if StatLabels.Players  then StatLabels.Players.Text  = tostring(#Players:GetPlayers()) .. " 人在玩" end
             if StatLabels.Capacity then StatLabels.Capacity.Text = tostring(Players.MaxPlayers) .. " 人" end
             if StatLabels.Latency  then StatLabels.Latency.Text  = Ping end
@@ -6971,11 +7059,23 @@ function Fenglib:CreateWindow(Config)
             if FriendLabels.All      then FriendLabels.All.Text      = FriendCache.All end
             UpdateFriends()
         end
+
         DetailsPage.Visible = true
-        if segButtons["Details"] then segButtons["Details"].Root.BackgroundTransparency = 0.08; segButtons["Details"].Icon.ImageColor3 = CurrentTheme.Accent; segButtons["Details"].Label.TextColor3 = CurrentTheme.Accent; segButtons["Details"].Label.TextTransparency = 0 end
+        if segButtons["Details"] then
+            segButtons["Details"].Root.BackgroundTransparency = 0.08
+            segButtons["Details"].Icon.ImageColor3 = CurrentTheme.Accent
+            segButtons["Details"].Label.TextColor3 = CurrentTheme.Accent
+            segButtons["Details"].Label.TextTransparency = 0
+        end
+
         local HomeConn = RunService.RenderStepped:Connect(UpdateHome)
-        Window._homeCleanup = Window._homeCleanup or {}; table.insert(Window._homeCleanup, function() safeDisconnect(HomeConn) end)
-        TabBuilder.HomeRoot = Root; TabBuilder.GetHomeSection = function() return Root end
+        Window._homeCleanup = Window._homeCleanup or {}
+        table.insert(Window._homeCleanup, function()
+            safeDisconnect(HomeConn)
+        end)
+
+        TabBuilder.HomeRoot = Root
+        TabBuilder.GetHomeSection = function() return Root end
         return TabBuilder
     end
 
@@ -6991,41 +7091,127 @@ function Fenglib:CreateWindow(Config)
         local Divider = Instance.new("Frame")
         local ButtonHolder = Instance.new("Frame")
         local ButtonLayout = Instance.new("UIListLayout")
-        Overlay.Parent = MainFrame; Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0); Overlay.BackgroundTransparency = 1; Overlay.Size = UDim2.fromScale(1, 1); Overlay.ZIndex = 180; Overlay.Active = true
-        Panel.Parent = Overlay; Panel.AnchorPoint = Vector2.new(0.5, 0.5); Panel.Position = UDim2.fromScale(0.5, 0.5); Panel.BackgroundColor3 = Color3.fromRGB(13, 17, 22); Panel.BackgroundTransparency = 1; Panel.ClipsDescendants = true; Panel.Size = UDim2.new(0, 365, 0, 188); Panel.ZIndex = 181
+        Overlay.Parent = MainFrame
+        Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        Overlay.BackgroundTransparency = 1
+        Overlay.Size = UDim2.fromScale(1, 1); Overlay.ZIndex = 180
+        Overlay.Active = true
+        Panel.Parent = Overlay
+        Panel.AnchorPoint = Vector2.new(0.5, 0.5)
+        Panel.Position = UDim2.fromScale(0.5, 0.5)
+        Panel.BackgroundColor3 = Color3.fromRGB(13, 17, 22)
+        Panel.BackgroundTransparency = 1
+        Panel.ClipsDescendants = true
+        Panel.Size = UDim2.new(0, 365, 0, 188)
+        Panel.ZIndex = 181
         UICorner.CornerRadius = UDim.new(0, 12); UICorner.Parent = Panel
-        UIStroke.Transparency = 1; UIStroke.Color = Color3.fromRGB(45, 48, 58); UIStroke.Parent = Panel
-        DTitle.Parent = Panel; DTitle.BackgroundTransparency = 1; DTitle.Position = UDim2.new(0, 18, 0, 18); DTitle.Size = UDim2.new(1, -36, 0, 21); DTitle.ZIndex = 183; DTitle.Font = Enum.Font.GothamBold; DTitle.Text = Config.Title or "提示"; DTitle.TextColor3 = Color3.fromRGB(255, 255, 255); DTitle.TextTransparency = 1; DTitle.TextXAlignment = Enum.TextXAlignment.Left
+        UIStroke.Transparency = 1
+        UIStroke.Color = Color3.fromRGB(45, 48, 58); UIStroke.Parent = Panel
+        DTitle.Parent = Panel
+        DTitle.BackgroundTransparency = 1
+        DTitle.Position = UDim2.new(0, 18, 0, 18)
+        DTitle.Size = UDim2.new(1, -36, 0, 21)
+        DTitle.ZIndex = 183
+        DTitle.Font = Enum.Font.GothamBold
+        DTitle.Text = Config.Title or "提示"
+        DTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DTitle.TextTransparency = 1
+        DTitle.TextXAlignment = Enum.TextXAlignment.Left
         AddToRegistry(DTitle, "TextColor3", "Text")
-        Content.Parent = Panel; Content.BackgroundTransparency = 1; Content.Position = UDim2.new(0, 18, 0, 48); Content.Size = UDim2.new(1, -36, 0, 76); Content.ZIndex = 183; Content.Font = Enum.Font.GothamMedium; Content.Text = Config.Content or ""; Content.TextColor3 = Color3.fromRGB(255, 255, 255); Content.TextTransparency = 1; Content.TextWrapped = true; Content.TextXAlignment = Enum.TextXAlignment.Left; Content.TextYAlignment = Enum.TextYAlignment.Top
+        Content.Parent = Panel
+        Content.BackgroundTransparency = 1
+        Content.Position = UDim2.new(0, 18, 0, 48)
+        Content.Size = UDim2.new(1, -36, 0, 76)
+        Content.ZIndex = 183
+        Content.Font = Enum.Font.GothamMedium
+        Content.Text = Config.Content or ""
+        Content.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Content.TextTransparency = 1
+        Content.TextWrapped = true
+        Content.TextXAlignment = Enum.TextXAlignment.Left
+        Content.TextYAlignment = Enum.TextYAlignment.Top
         AddToRegistry(Content, "TextColor3", "Text")
-        Divider.Parent = Panel; Divider.BackgroundColor3 = Color3.fromRGB(45, 48, 58); Divider.BackgroundTransparency = 1; Divider.Position = UDim2.new(0, 14, 1, -54); Divider.Size = UDim2.new(1, -28, 0, 1); Divider.ZIndex = 182
+        Divider.Parent = Panel
+        Divider.BackgroundColor3 = Color3.fromRGB(45, 48, 58)
+        Divider.BackgroundTransparency = 1
+        Divider.Position = UDim2.new(0, 14, 1, -54)
+        Divider.Size = UDim2.new(1, -28, 0, 1)
+        Divider.ZIndex = 182
         AddToRegistry(Divider, "BackgroundColor3", "Stroke")
-        ButtonHolder.Parent = Panel; ButtonHolder.AnchorPoint = Vector2.new(1, 1); ButtonHolder.BackgroundTransparency = 1; ButtonHolder.Position = UDim2.new(1, -16, 1, -14); ButtonHolder.Size = UDim2.new(1, -32, 0, 32); ButtonHolder.ZIndex = 182
-        ButtonLayout.Parent = ButtonHolder; ButtonLayout.FillDirection = Enum.FillDirection.Horizontal; ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right; ButtonLayout.SortOrder = Enum.SortOrder.LayoutOrder; ButtonLayout.Padding = UDim.new(0, 8)
+        ButtonHolder.Parent = Panel
+        ButtonHolder.AnchorPoint = Vector2.new(1, 1)
+        ButtonHolder.BackgroundTransparency = 1
+        ButtonHolder.Position = UDim2.new(1, -16, 1, -14)
+        ButtonHolder.Size = UDim2.new(1, -32, 0, 32)
+        ButtonHolder.ZIndex = 182
+        ButtonLayout.Parent = ButtonHolder
+        ButtonLayout.FillDirection = Enum.FillDirection.Horizontal
+        ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        ButtonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        ButtonLayout.Padding = UDim.new(0, 8)
         function Dialog:Close(Result)
-            if Dialog.Closed then return Result end; Dialog.Closed = true; Tween(Overlay, {BackgroundTransparency = 1}, 0.15); Tween(Panel, {BackgroundTransparency = 1, Size = UDim2.new(0, 365, 0, 188)}, 0.15); task.delay(0.2, function() Overlay:Destroy() end); pcall(Config.Callback, Result); return Result
+            if Dialog.Closed then return Result end
+            Dialog.Closed = true
+            Tween(Overlay, {BackgroundTransparency = 1}, 0.15)
+            Tween(Panel, {BackgroundTransparency = 1, Size = UDim2.new(0, 365, 0, 188)}, 0.15)
+            task.delay(0.2, function() Overlay:Destroy() end)
+            pcall(Config.Callback, Result)
+            return Result
         end
         local function AddDialogButton(Text, Primary, Callback)
-            local Button = Instance.new("Frame"); Button.Parent = ButtonHolder; Button.BackgroundColor3 = Primary and CurrentTheme.Accent or Color3.fromRGB(26, 28, 36); Button.BackgroundTransparency = 1; Button.ClipsDescendants = true
-            Button.Size = UDim2.new(0, math.max(78, TextService:GetTextSize(Text, 12, Enum.Font.GothamBold, Vector2.new(math.huge, math.huge)).X + 32), 0, 32); Button.ZIndex = 183
+            local Button = Instance.new("Frame")
+            Button.Parent = ButtonHolder
+            Button.BackgroundColor3 = Primary and CurrentTheme.Accent or Color3.fromRGB(26, 28, 36)
+            Button.BackgroundTransparency = 1
+            Button.ClipsDescendants = true
+            Button.Size = UDim2.new(0, math.max(78, TextService:GetTextSize(Text, 12, Enum.Font.GothamBold, Vector2.new(math.huge, math.huge)).X + 32), 0, 32)
+            Button.ZIndex = 183
             Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 7)
-            local Stroke = Instance.new("UIStroke"); Stroke.Transparency = 1; Stroke.Color = Primary and CurrentTheme.Accent or Color3.fromRGB(45, 48, 58); Stroke.Parent = Button
-            local Label = Instance.new("TextLabel"); Label.Parent = Button; Label.BackgroundTransparency = 1; Label.Size = UDim2.fromScale(1, 1); Label.ZIndex = 184; Label.Font = Primary and Enum.Font.GothamBold or Enum.Font.GothamMedium; Label.Text = Text; Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextSize = 12; Label.TextTransparency = 1
+            local Stroke = Instance.new("UIStroke")
+            Stroke.Transparency = 1
+            Stroke.Color = Primary and CurrentTheme.Accent or Color3.fromRGB(45, 48, 58)
+            Stroke.Parent = Button
+            local Label = Instance.new("TextLabel")
+            Label.Parent = Button
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.fromScale(1, 1)
+            Label.ZIndex = 184
+            Label.Font = Primary and Enum.Font.GothamBold or Enum.Font.GothamMedium
+            Label.Text = Text
+            Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Label.TextSize = 12
+            Label.TextTransparency = 1
             AddToRegistry(Label, "TextColor3", "Text")
-            local Input = Instance.new("TextButton"); Input.Size = UDim2.fromScale(1, 1); Input.BackgroundTransparency = 1; Input.Text = ""; Input.Parent = Button
-            Input.MouseButton1Click:Connect(function() local Result = Callback and Callback() or Text; Dialog:Close(Result) end)
+            local Input = Instance.new("TextButton")
+            Input.Size = UDim2.fromScale(1, 1)
+            Input.BackgroundTransparency = 1; Input.Text = ""
+            Input.Parent = Button
+            Input.MouseButton1Click:Connect(function()
+                local Result = Callback and Callback() or Text
+                Dialog:Close(Result)
+            end)
             Input.MouseEnter:Connect(function() Tween(Button, {BackgroundTransparency = Primary and 0 or 0.08}, 0.15) end)
             Input.MouseLeave:Connect(function() Tween(Button, {BackgroundTransparency = Primary and 0.1 or 0.25}, 0.15) end)
-            Tween(Button, {BackgroundTransparency = Primary and 0.1 or 0.25}, 0.1); Tween(Stroke, {Transparency = Primary and 1 or 0.65}, 0.1); Tween(Label, {TextTransparency = 0}, 0.1)
+            Tween(Button, {BackgroundTransparency = Primary and 0.1 or 0.25}, 0.1)
+            Tween(Stroke, {Transparency = Primary and 1 or 0.65}, 0.1)
+            Tween(Label, {TextTransparency = 0}, 0.1)
         end
-        for _, BtnConfig in ipairs(Config.Buttons or {{Text = "确定", Primary = true}}) do AddDialogButton(BtnConfig.Text, BtnConfig.Primary, BtnConfig.Callback) end
-        Tween(Overlay, {BackgroundTransparency = 0.28}, 0.25); Tween(Panel, {BackgroundTransparency = 0.025, Size = UDim2.new(0, 392, 0, 200)}, 0.25); Tween(UIStroke, {Transparency = 0.65}, 0.25); Tween(DTitle, {TextTransparency = 0}, 0.25); Tween(Content, {TextTransparency = 0.25}, 0.25); Tween(Divider, {BackgroundTransparency = 0.72}, 0.25)
+        for _, BtnConfig in ipairs(Config.Buttons or {{Text = "确定", Primary = true}}) do
+            AddDialogButton(BtnConfig.Text, BtnConfig.Primary, BtnConfig.Callback)
+        end
+        Tween(Overlay, {BackgroundTransparency = 0.28}, 0.25)
+        Tween(Panel, {BackgroundTransparency = 0.025, Size = UDim2.new(0, 392, 0, 200)}, 0.25)
+        Tween(UIStroke, {Transparency = 0.65}, 0.25)
+        Tween(DTitle, {TextTransparency = 0}, 0.25)
+        Tween(Content, {TextTransparency = 0.25}, 0.25)
+        Tween(Divider, {BackgroundTransparency = 0.72}, 0.25)
         return Dialog
     end
 
     function Window:Notify(Config)
-        if type(Config) == "string" then Config = { Content = Config } end
+        if type(Config) == "string" then
+            Config = { Content = Config }
+        end
         Config = Config or {}
         return Notifier.new(Config)
     end
@@ -7041,11 +7227,29 @@ function Fenglib:CreateWindow(Config)
     function Window:SetAccount(cfg)
         cfg = cfg or {}
         if cfg.ShowUser == false then
-            AccountProfile.Image = ""; AccountProfile.BackgroundColor3 = Color3.fromRGB(26, 28, 36); AccountProfile.BackgroundTransparency = 0.25; AccountProfile.ImageColor3 = CurrentTheme.Accent; AccountName.Text = cfg.Expires  or "自定义菜单"; ExpireLabel.Text = cfg.Username or "设置"
-            if Window._userCard then Window._userCard:SetValue(1, cfg.Expires  or "自定义菜单"); Window._userCard:SetValue(2, cfg.Username or "设置") end
+            AccountProfile.Image = ""
+            AccountProfile.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
+            AccountProfile.BackgroundTransparency = 0.25
+            AccountProfile.ImageColor3 = CurrentTheme.Accent
+            AccountName.Text = cfg.Expires  or "自定义菜单"
+            ExpireLabel.Text = cfg.Username or "设置"
+            if Window._userCard then
+                Window._userCard:SetValue(1, cfg.Expires  or "自定义菜单")
+                Window._userCard:SetValue(2, cfg.Username or "设置")
+            end
         else
-            AccountProfile.Image = cfg.Profile or Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150); AccountProfile.BackgroundColor3 = Color3.new(1, 1, 1); AccountProfile.BackgroundTransparency = 1; AccountName.Text = cfg.Expires  or LocalPlayer.DisplayName; ExpireLabel.Text = cfg.Username or LocalPlayer.Name
-            if Window._userCard then Window._userCard:SetValue(1, cfg.Expires  or LocalPlayer.DisplayName); Window._userCard:SetValue(2, cfg.Username or LocalPlayer.Name); if cfg.Profile then Window._userCard:SetProfile(cfg.Profile) end end
+            AccountProfile.Image = cfg.Profile
+                or Players:GetUserThumbnailAsync(LocalPlayer.UserId,
+                    Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+            AccountProfile.BackgroundColor3 = Color3.new(1, 1, 1)
+            AccountProfile.BackgroundTransparency = 1
+            AccountName.Text = cfg.Expires  or LocalPlayer.DisplayName
+            ExpireLabel.Text = cfg.Username or LocalPlayer.Name
+            if Window._userCard then
+                Window._userCard:SetValue(1, cfg.Expires  or LocalPlayer.DisplayName)
+                Window._userCard:SetValue(2, cfg.Username or LocalPlayer.Name)
+                if cfg.Profile then Window._userCard:SetProfile(cfg.Profile) end
+            end
         end
     end
     Window:SetAccount({ ShowUser = (Config.ShowUser ~= false) })
@@ -7054,17 +7258,54 @@ function Fenglib:CreateWindow(Config)
 end
 
 do
-    local cursorScreen = Instance.new("ScreenGui"); cursorScreen.Name = "FengCustomCursor"; cursorScreen.IgnoreGuiInset = true; cursorScreen.DisplayOrder = 2147483647; cursorScreen.ZIndexBehavior = Enum.ZIndexBehavior.Global; cursorScreen.ResetOnSpawn = false; cursorScreen.Enabled = false; cursorScreen.Parent = CoreGui
-    local cursorRoot = Instance.new("Frame"); cursorRoot.BackgroundTransparency = 1; cursorRoot.Size = UDim2.new(0, 20, 0, 20); cursorRoot.ZIndex = 2147483647; cursorRoot.Visible = false; cursorRoot.Parent = cursorScreen
-    local img = Instance.new("ImageLabel"); img.BackgroundTransparency = 1; img.Size = UDim2.new(1, 0, 1, 0); img.Image = "rbxassetid://132511743665753"; img.ImageColor3 = Color3.fromRGB(90, 165, 255); img.ScaleType = Enum.ScaleType.Fit; img.Rotation = -90; img.Parent = cursorRoot
-    local cursorConn = RunService.RenderStepped:Connect(function() if not cursorRoot.Visible then return end; local loc = UserInputService:GetMouseLocation(); cursorRoot.Position = UDim2.new(0, loc.X - 2, 0, loc.Y - 2) end)
+    local cursorScreen = Instance.new("ScreenGui")
+    cursorScreen.Name = "FengCustomCursor"
+    cursorScreen.IgnoreGuiInset = true
+    cursorScreen.DisplayOrder = 2147483647
+    cursorScreen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    cursorScreen.ResetOnSpawn = false
+    cursorScreen.Enabled = false
+    cursorScreen.Parent = CoreGui
+    local cursorRoot = Instance.new("Frame")
+    cursorRoot.BackgroundTransparency = 1
+    cursorRoot.Size = UDim2.new(0, 20, 0, 20)
+    cursorRoot.ZIndex = 2147483647
+    cursorRoot.Visible = false
+    cursorRoot.Parent = cursorScreen
+    local img = Instance.new("ImageLabel")
+    img.BackgroundTransparency = 1
+    img.Size = UDim2.new(1, 0, 1, 0)
+    img.Image = "rbxassetid://132511743665753"
+    img.ImageColor3 = Color3.fromRGB(90, 165, 255)
+    img.ScaleType = Enum.ScaleType.Fit
+    img.Rotation = -90
+    img.Parent = cursorRoot
+    local cursorConn = RunService.RenderStepped:Connect(function()
+        if not cursorRoot.Visible then return end
+        local loc = UserInputService:GetMouseLocation()
+        cursorRoot.Position = UDim2.new(0, loc.X - 2, 0, loc.Y - 2)
+    end)
     Fenglib._cursorObjects = { Screen = cursorScreen, Root = cursorRoot, Image = img, Connection = cursorConn, Enabled = false }
     function Fenglib:SetCustomCursor(enabled)
         enabled = enabled == true
-        if Fenglib._cursorObjects then Fenglib._cursorObjects.Root.Visible = enabled; Fenglib._cursorObjects.Screen.Enabled = enabled; Fenglib._cursorObjects.Enabled = enabled; pcall(function() UserInputService.MouseIconEnabled = not enabled end) end
+        if Fenglib._cursorObjects then
+            Fenglib._cursorObjects.Root.Visible = enabled
+            Fenglib._cursorObjects.Screen.Enabled = enabled
+            Fenglib._cursorObjects.Enabled = enabled
+            pcall(function() UserInputService.MouseIconEnabled = not enabled end)
+        end
     end
-    function Fenglib:ToggleCustomCursor() local current = Fenglib._cursorObjects and Fenglib._cursorObjects.Enabled or false; Fenglib:SetCustomCursor(not current) end
-    function Fenglib:CleanupCursor() if Fenglib._cursorObjects then safeDisconnect(Fenglib._cursorObjects.Connection); if Fenglib._cursorObjects.Screen then Fenglib._cursorObjects.Screen:Destroy() end; Fenglib._cursorObjects = nil end end
+    function Fenglib:ToggleCustomCursor()
+        local current = Fenglib._cursorObjects and Fenglib._cursorObjects.Enabled or false
+        Fenglib:SetCustomCursor(not current)
+    end
+    function Fenglib:CleanupCursor()
+        if Fenglib._cursorObjects then
+            safeDisconnect(Fenglib._cursorObjects.Connection)
+            if Fenglib._cursorObjects.Screen then Fenglib._cursorObjects.Screen:Destroy() end
+            Fenglib._cursorObjects = nil
+        end
+    end
 end
 
 return Fenglib
