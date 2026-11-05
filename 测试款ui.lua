@@ -7211,3 +7211,72 @@ do
 end
 
 return Fenglib
+-- 假设前面那 7000 行代码被你返回成了变量 Fenglib
+
+local Window = Fenglib:CreateWindow({
+    Name = "杀脚本 | 被遗弃", -- 左上角主标题
+    SubName = "UI 设置与特效", -- 左上角副标题
+    Logo = "rbxassetid://9904843409", 
+    Theme = "Dark", 
+})
+
+-- ==========================================
+-- 页面 1：玩家卡片 (图4)
+-- ==========================================
+local Tab1 = Window:Tab("玩家卡片", "rbxassetid://10734895958") 
+local Tab1Sec = Tab1:Section({ Name = "玩家卡片", SubName = "修改左下角显示的名字与头像" })
+
+Tab1Sec:UserFrame({
+    Name = "tuhegw",
+    Expires = "x_k676767",
+    Profile = "rbxassetid://83701039519151", 
+    ButtonIcon = 9405931578, -- 齿轮图标
+    Names = {"名字", "副名字"},
+    Defaults = {"tuhegw", "x_k676767"},
+})
+
+-- ==========================================
+-- 页面 2：UI设置 (图3)
+-- ==========================================
+local Tab2 = Window:Tab("UI设置", "rbxassetid://10734895958")
+local Tab2Sec = Tab2:Section({ Name = "UI设置", SubName = "只有几个基础设置" })
+
+Tab2Sec:Keybind({
+    Name = "菜单绑定键",
+    Default = Enum.KeyCode.RightShift,
+    Mode = "Toggle"
+})
+
+Tab2Sec:Toggle({
+    Name = "文字渐变",
+    Value = true,
+    Callback = function(enabled) Fenglib.TextGradient:SetEnabled(enabled) end
+})
+
+Tab2Sec:Toggle({
+    Name = "自定义光标",
+    Value = false,
+    Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end
+})
+
+-- ==========================================
+-- 页面 3：特效设置 (图2)
+-- ==========================================
+local Tab3 = Window:Tab("特效设置", "rbxassetid://10734895958")
+local Tab3Sec = Tab3:Section({ Name = "特效设置", SubName = "选择视觉效果" })
+
+-- 用下拉框或者滑块来代替图2里的方块选择
+Tab3Sec:Dropdown({
+    Name = "当前特效",
+    Values = {"代码雨", "下雨", "花瓣", "星星"},
+    Value = "花瓣",
+    Callback = function(val) print("你选择了特效:", val) end
+})
+
+Tab3Sec:Button({
+    Name = "开启/关闭 花瓣特效",
+    Callback = function()
+        -- 这里写你触发特效的代码
+        print("特效已触发")
+    end
+})
