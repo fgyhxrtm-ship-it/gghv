@@ -84,6 +84,7 @@ local Themes = {
 }
 local CurrentTheme = Themes.Dark
 
+-- 【改动点 1】新增：两个开关的默认值，保证窗口创建时初始为开启
 if _G.KuanClickFxEnabled == nil then _G.KuanClickFxEnabled = true end
 if _G.KuanStartSoundEnabled == nil then _G.KuanStartSoundEnabled = true end
 local Registry = {}
@@ -456,6 +457,7 @@ function MediaManager:Image(src)
     end
     return ""
 end
+
 local function createLockOverlay(parent, defaultTitle)
     local cornerRadius = UDim.new(0, 8)
     for _, child in ipairs(parent:GetChildren()) do
@@ -514,7 +516,6 @@ local function formatIconAsset(asset, default)
 end
 
 local CHESSBOARD_IMAGE = "http://www.roblox.com/asset/?id=14204231522"
-
 local function createSectionBuilder(parent, contentContainer, elementWidth, windowCount, window)
     local win = window
     local padding = parent:FindFirstChild("SectionPadding")
@@ -685,6 +686,7 @@ local function createSectionBuilder(parent, contentContainer, elementWidth, wind
     function self.SetVisible(v) Tile.Visible = v end
     return self
 end
+
 child.Slider = function(_, config)
     config = safeConfig(config)
     local sliderText = config.Name or ""
@@ -1224,8 +1226,7 @@ child.Input = function(_, config)
     local numeric = options.Numeric == true
     local maxLength = options.MaxLength or options.CharacterLimit
     local acceptedChars = options.AcceptedCharacters
-    local onChanged = options.OnChanged        
-    local controlId = NewConfigId("Input", inputText)
+    local onChanged = options.OnChanged        local controlId = NewConfigId("Input", inputText)
     local parent = config.Parent or contentHolder
     local Tile = miRow(parent, 42)
     local NameLbl = miLabel(Tile, inputText, 15, 12, UDim2.new(0.6, 0, 0, 18), 13)
@@ -1768,7 +1769,7 @@ child.Colorpicker = function(_, config)
     local lockFrame, lockLabel = createLockOverlay(Tile, lockedTitle)
     lockFrame.Visible = locked
     PreviewBtn.Active = not locked
-    
+
     local dialogOpen = false
     local function OpenColorpicker()
         if locked or dialogOpen then return end
@@ -3533,7 +3534,6 @@ child.Social = function(_, config)
     function mod:Destroy() wrap:Destroy() end
     return mod
 end
-
 child.Paragraph = function(_, config)
     config = safeConfig(config)
     local title = config.Name or ""
@@ -3758,9 +3758,7 @@ child.Tabbox = function(_, config)
     local tabboxName = config.Name or "Tabbox"
     local parent = config.Parent or contentContainer or parent
     if not parent then return nil end
-
     local tabboxObj = { Tabs = {}, ActiveTab = nil }
-
     local tabboxFrame = Instance.new("Frame")
     tabboxFrame.Name = "TabboxFrame"
     tabboxFrame.Size = UDim2.new(1, -5, 0, 0)
@@ -3771,14 +3769,12 @@ child.Tabbox = function(_, config)
     tabboxFrame.Parent = parent
     Instance.new("UICorner", tabboxFrame).CornerRadius = UDim.new(0, 10)
     AddToRegistry(tabboxFrame, "BackgroundColor3", "Main")
-
     local tabboxStroke = Instance.new("UIStroke")
     tabboxStroke.Thickness = 1
     tabboxStroke.Transparency = 0.65
     tabboxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     tabboxStroke.Parent = tabboxFrame
     AddToRegistry(tabboxStroke, "Color", "Stroke")
-
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Name = "TabboxTitle"
     titleLbl.Size = UDim2.new(1, -20, 0, 15)
@@ -3792,7 +3788,6 @@ child.Tabbox = function(_, config)
     titleLbl.Parent = tabboxFrame
     AddToRegistry(titleLbl, "TextColor3", "Text")
     TextGradient:Skip(titleLbl)
-
     local buttonHolder = Instance.new("Frame")
     buttonHolder.Name = "TabboxButtons"
     buttonHolder.Size = UDim2.new(1, -16, 0, 26)
@@ -3804,16 +3799,13 @@ child.Tabbox = function(_, config)
     buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
     buttonLayout.Padding = UDim.new(0, 5)
     buttonLayout.Parent = buttonHolder
-
     local contentWrap = Instance.new("Frame")
     contentWrap.Name = "TabboxContent"
     contentWrap.Size = UDim2.new(1, -10, 0, 0)
     contentWrap.Position = UDim2.new(0, 5, 0, 56)
     contentWrap.BackgroundTransparency = 1
     contentWrap.Parent = tabboxFrame
-
     local HEADER_H = 56
-
     local function refreshHeight()
         local contentH = 0
         if tabboxObj.ActiveTab and tabboxObj.ActiveTab.ContentLayout then
@@ -3825,14 +3817,11 @@ child.Tabbox = function(_, config)
         }):Play()
         contentWrap.Size = UDim2.new(1, -10, 0, contentH)
     end
-
     tabboxObj.AddTab = function(_, tabConfig)
         if type(tabConfig) == "string" then tabConfig = { Name = tabConfig } end
         tabConfig = tabConfig or {}
         local tabName = tabConfig.Name or "Tab"
-
         local subTab = { Name = tabName, Icon = tabConfig.Icon }
-
         local btn = Instance.new("TextButton")
         btn.Name = "SubTabButton"
         btn.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
@@ -3841,14 +3830,12 @@ child.Tabbox = function(_, config)
         btn.AutoButtonColor = false
         btn.Parent = buttonHolder
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
-
         local btnStroke = Instance.new("UIStroke")
         btnStroke.Thickness = 1
         btnStroke.Transparency = 1
         btnStroke.Color = CurrentTheme.Stroke
         btnStroke.Parent = btn
         table.insert(ThemeListeners, function() btnStroke.Color = CurrentTheme.Stroke end)
-
         local btnLabel = Instance.new("TextLabel")
         btnLabel.Size = UDim2.new(1, 0, 1, 0)
         btnLabel.BackgroundTransparency = 1
@@ -3858,10 +3845,8 @@ child.Tabbox = function(_, config)
         btnLabel.TextTransparency = 0.5
         btnLabel.Parent = btn
         AddToRegistry(btnLabel, "TextColor3", "Text")
-
         local txtSize = TextService:GetTextSize(tabName, 11, Enum.Font.GothamMedium, Vector2.new(math.huge, math.huge))
         btn.Size = UDim2.new(0, txtSize.X + 24, 1, 0)
-
         local contentFrame = Instance.new("Frame")
         contentFrame.Name = "SubTabContent"
         contentFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -3869,16 +3854,13 @@ child.Tabbox = function(_, config)
         contentFrame.BackgroundTransparency = 1
         contentFrame.Visible = false
         contentFrame.Parent = contentWrap
-
         local contentList = Instance.new("UIListLayout")
         contentList.Padding = UDim.new(0, 0)
         contentList.SortOrder = Enum.SortOrder.LayoutOrder
         contentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
         contentList.Parent = contentFrame
-
         subTab.ContentLayout = contentList
         subTab.ContentFrame = contentFrame
-
         local function setActive(active)
             if active then
                 btn.BackgroundTransparency = 0.5
@@ -3893,7 +3875,6 @@ child.Tabbox = function(_, config)
             end
         end
         subTab.SetActive = setActive
-
         btn.MouseButton1Click:Connect(function()
             tabboxObj.ActiveTab = subTab
             for _, t in ipairs(tabboxObj.Tabs) do
@@ -3901,22 +3882,18 @@ child.Tabbox = function(_, config)
             end
             refreshHeight()
         end)
-
         table.insert(tabboxObj.Tabs, subTab)
-
         if not tabboxObj.ActiveTab then
             tabboxObj.ActiveTab = subTab
             setActive(true)
         else
             setActive(false)
         end
-
         contentList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             if tabboxObj.ActiveTab == subTab then
                 refreshHeight()
             end
         end)
-
         local subBuilder = createSectionBuilder(contentFrame, contentFrame, elementWidth, windowCount, win)
         return setmetatable({}, {
             __index = function(_, key)
@@ -3937,10 +3914,8 @@ child.Tabbox = function(_, config)
             end
         })
     end
-
     tabboxObj.SetVisible = function(_, vis) tabboxFrame.Visible = vis end
     tabboxObj.Destroy = function(_) tabboxFrame:Destroy() end
-
     refreshHeight()
     return tabboxObj
 end
@@ -4161,7 +4136,7 @@ end
             contentHolder.Visible = not state
             updateHeight(instant)
         end
-        
+
         local PoppedOut = false
         local PopOutFloat = nil
         local PopOutPlaceholder = nil
@@ -4658,7 +4633,6 @@ end
 
 function Fenglib:CreateWindow(Config)
     ConfigIdCounter = 0
-
     local Window = {}
     local Title = Config.Name or "FengYu"
     local Subtitle = Config.SubName
@@ -4709,7 +4683,6 @@ function Fenglib:CreateWindow(Config)
 
     local Notification = Instance.new("Frame")
     local NotificationLayout = Instance.new("UIListLayout")
-
     Notification.Name = "Notification"
     Notification.Parent = ScreenGui
     Notification.AnchorPoint = Vector2.new(1, 0)
@@ -4732,7 +4705,7 @@ function Fenglib:CreateWindow(Config)
         Config = Config or {}
         local CustomIcon = Config.Icon
 
-        if Config.Name == nil then Config.Name = "款脚本温馨提示" end
+        if Config.Name == nil then Config.Name = "殺脚本温馨提示" end
         if Config.Content == nil then Config.Content = "你个废物会不会用通知" end
         if Config.Logo == nil then Config.Logo = "rbxasset://textures/ui/VerifiedBadgeNameIcon.png" end
         if Config.Icon == nil then Config.Icon = CustomIcon end
@@ -4868,34 +4841,25 @@ function Fenglib:CreateWindow(Config)
 
         local Size1 = TextService:GetTextSize(NotifyName.Text, NotifyName.TextSize, NotifyName.Font, Vector2.new(math.huge, math.huge))
         local Size2 = TextService:GetTextSize(NotifyContent.Text, NotifyContent.TextSize, NotifyContent.Font, Vector2.new(math.huge, math.huge))
-
         local MainSize = math.max(Size1.X, Size2.X)
 
         NotifyFrame.Size = UDim2.new(0, MainSize + 65, 0, 55)
-
         Tween(NotifyFrame, { Position = UDim2.new(1, 0, 0, 0) }, 0.5)
-
         ContainerFrame.Size = UDim2.new(0, 0, 0, 65)
 
         task.delay(Config.Duration or 5, function()
             SetShadow(false)
-
             Tween(NotifyFrame, { BackgroundTransparency = 1 }, 0.175)
             Tween(UIStroke, { Transparency = 1 }, 0.175)
             Tween(LogoImage, { ImageTransparency = 1 }, 0.175)
             Tween(LogoIcon, { ImageTransparency = 1 }, 0.175)
             Tween(NotifyName, { TextTransparency = 1 }, 0.175)
             Tween(NotifyContent, { TextTransparency = 1 }, 0.175)
-
             task.wait(0.125)
-
             Tween(ContainerFrame, { Size = UDim2.new(0, 0, 0, 0) }, 0.175)
-
             task.wait(0.125)
-
             ContainerFrame:Destroy()
         end)
-
         return NotifyFrame
     end
 
@@ -5207,69 +5171,60 @@ function Fenglib:CreateWindow(Config)
         Parent = SettingsPanel,
         Callback = function(enabled) Fenglib:SetCustomCursor(enabled) end,
     })
-local bgOptions = {
-    ["默认背景"]     = "",
-    ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
-    ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
-    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
-}
 
-settingsBuilder:Dropdown({
-    Name = "切换背景图",
-    Values = { "默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景" },
-    Value = "默认背景",
-    Parent = SettingsPanel,
-    Callback = function(selection)
-        local url = bgOptions[selection]
+    local bgOptions = {
+        ["默认背景"]     = "",
+        ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
+        ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
+        ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
+    }
 
-        -- 选默认背景 → 恢复渐变
-        if not url or url == "" then
-            bgGradient.Enabled = true
-            bgImage.Visible = false
-            bgImage.Image = ""
-            return
-        end
-
-        -- 换成图片：停用渐变，异步下载
-        bgGradient.Enabled = false
-        task.spawn(function()
-            local asset = MediaManager:Image(url)
-            if asset and asset ~= "" then
-                bgImage.Visible = true
-                bgImage.Image = asset
-            else
-                -- 下载失败就回退到默认
+    settingsBuilder:Dropdown({
+        Name = "切换背景图",
+        Values = { "默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景" },
+        Value = "默认背景",
+        Parent = SettingsPanel,
+        Callback = function(selection)
+            local url = bgOptions[selection]
+            if not url or url == "" then
+                bgGradient.Enabled = true
                 bgImage.Visible = false
                 bgImage.Image = ""
-                bgGradient.Enabled = true
-                warn("[背景图] 下载失败:", selection)
+                return
             end
-        end)
-    end,
-})
+            bgGradient.Enabled = false
+            task.spawn(function()
+                local asset = MediaManager:Image(url)
+                if asset and asset ~= "" then
+                    bgImage.Visible = true
+                    bgImage.Image = asset
+                else
+                    bgImage.Visible = false
+                    bgImage.Image = ""
+                    bgGradient.Enabled = true
+                    warn("[背景图] 下载失败:", selection)
+                end
+            end)
+        end,
+    })
 
--- ============================================================
--- 新增两个开关：点击屏幕贴图 / 启动音效
--- 状态存在 _G.KuanClickFxEnabled / _G.KuanStartSoundEnabled
--- 主脚本读这两个全局标志决定是否放行点击贴图和启动音效
--- ============================================================
-settingsBuilder:Toggle({
-    Name = "点击屏幕贴图",
-    Value = _G.KuanClickFxEnabled ~= false,
-    Parent = SettingsPanel,
-    Callback = function(enabled)
-        _G.KuanClickFxEnabled = enabled
-    end,
-})
+    settingsBuilder:Toggle({
+        Name = "点击屏幕贴图",
+        Value = _G.KuanClickFxEnabled ~= false,
+        Parent = SettingsPanel,
+        Callback = function(enabled)
+            _G.KuanClickFxEnabled = enabled
+        end,
+    })
 
-settingsBuilder:Toggle({
-    Name = "启动音效",
-    Value = _G.KuanStartSoundEnabled ~= false,
-    Parent = SettingsPanel,
-    Callback = function(enabled)
-        _G.KuanStartSoundEnabled = enabled
-    end,
-})
+    settingsBuilder:Toggle({
+        Name = "启动音效",
+        Value = _G.KuanStartSoundEnabled ~= false,
+        Parent = SettingsPanel,
+        Callback = function(enabled)
+            _G.KuanStartSoundEnabled = enabled
+        end,
+    })
 
     SettingsList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         if SettingsPanel.Visible then
@@ -5446,19 +5401,9 @@ settingsBuilder:Toggle({
     local CloseBtn = createControlButton("rbxassetid://130510492706892", nil, function() ScreenGui:Destroy() end)
 
     do
-        local BUILDER_ICONS_PATH =
-            "rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json"
-
-        local ICON_FONT_REGULAR = Font.new(
-            BUILDER_ICONS_PATH,
-            Enum.FontWeight.Regular,
-            Enum.FontStyle.Normal
-        )
-        local ICON_FONT_BOLD = Font.new(
-            BUILDER_ICONS_PATH,
-            Enum.FontWeight.Bold,
-            Enum.FontStyle.Normal
-        )
+        local BUILDER_ICONS_PATH = "rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json"
+        local ICON_FONT_REGULAR = Font.new(BUILDER_ICONS_PATH, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        local ICON_FONT_BOLD = Font.new(BUILDER_ICONS_PATH, Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 
         local function SetIconMode(Label, IconName)
             if not Label or not IconName or IconName == "" then
@@ -5485,30 +5430,18 @@ settingsBuilder:Toggle({
 
         local function EnsureConfigDir()
             pcall(function()
-                if not isfolder(CONFIG_DIR) then
-                    makefolder(CONFIG_DIR)
-                end
+                if not isfolder(CONFIG_DIR) then makefolder(CONFIG_DIR) end
             end)
         end
-
-        local function ConfigPath(name)
-            return CONFIG_DIR .. "/" .. tostring(name) .. ".json"
-        end
-
-        local function ConfigExists(name)
-            local ok, r = pcall(isfile, ConfigPath(name))
-            return ok and r == true
-        end
-
+        local function ConfigPath(name) return CONFIG_DIR .. "/" .. tostring(name) .. ".json" end
+        local function ConfigExists(name) local ok, r = pcall(isfile, ConfigPath(name)); return ok and r == true end
         local function ListAllConfigs()
             local out = {}
             pcall(function()
                 if not isfolder(CONFIG_DIR) then return end
                 for _, path in ipairs(listfiles(CONFIG_DIR)) do
                     local n = path:match("([^/\\]+)%.json$")
-                    if n and #n > 0 then
-                        table.insert(out, n)
-                    end
+                    if n and #n > 0 then table.insert(out, n) end
                 end
             end)
             return out
@@ -5522,18 +5455,12 @@ settingsBuilder:Toggle({
                     if type(obj.Get) == "function" then
                         local ok2, got = pcall(obj.Get)
                         if ok2 then v = got end
-                    else
-                        v = obj.Value
-                    end
-                    if v ~= nil then
-                        raw[id] = v
-                    end
+                    else v = obj.Value end
+                    if v ~= nil then raw[id] = v end
                 end
             end
             local wrapped = SerializeValue(raw)
-            local ok, encoded = pcall(function()
-                return HttpService:JSONEncode(wrapped)
-            end)
+            local ok, encoded = pcall(function() return HttpService:JSONEncode(wrapped) end)
             return ok and encoded or nil
         end
 
@@ -5541,43 +5468,24 @@ settingsBuilder:Toggle({
             name = tostring(name or DEFAULT_CONFIG_NAME)
             name = string.sub(name, 1, 24)
             if name == "" then return false end
-            if name:find("/", 1, true) or name:find("\\", 1, true) then
-                return false
-            end
-
+            if name:find("/", 1, true) or name:find("\\", 1, true) then return false end
             EnsureConfigDir()
-
-            if ConfigExists(name) and not overwrite then
-                return false
-            end
-
+            if ConfigExists(name) and not overwrite then return false end
             local data = SerializeConfig()
             if not data then return false end
-
-            local ok = pcall(writefile, ConfigPath(name), data)
-            return ok
+            return pcall(writefile, ConfigPath(name), data)
         end
 
         local function ReadConfig(name)
             if not ConfigExists(name) then return false end
-
             local ok, raw = pcall(readfile, ConfigPath(name))
             if not ok or not raw then return false end
-
-            local ok2, decoded = pcall(function()
-                return HttpService:JSONDecode(raw)
-            end)
-            if not ok2 or type(decoded) ~= "table" then
-                return false
-            end
-
+            local ok2, decoded = pcall(function() return HttpService:JSONDecode(raw) end)
+            if not ok2 or type(decoded) ~= "table" then return false end
             local data = DeserializeValue(decoded)
-
             for id, value in pairs(data) do
                 local obj = ConfigObjects[id]
-                if obj and type(obj.Set) == "function" then
-                    pcall(function() obj.Set(value) end)
-                end
+                if obj and type(obj.Set) == "function" then pcall(function() obj.Set(value) end) end
             end
             return true
         end
@@ -5589,125 +5497,121 @@ settingsBuilder:Toggle({
         end
 
         local ConfigFrame = Instance.new("Frame")
-        ConfigFrame.Name                 = "ConfigFrame"
-        ConfigFrame.AnchorPoint          = Vector2.new(0, 0.5)
-        ConfigFrame.BackgroundColor3     = Color3.fromRGB(13, 17, 22)
+        ConfigFrame.Name = "ConfigFrame"
+        ConfigFrame.AnchorPoint = Vector2.new(0, 0.5)
+        ConfigFrame.BackgroundColor3 = Color3.fromRGB(13, 17, 22)
         ConfigFrame.BackgroundTransparency = 0.750
-        ConfigFrame.BorderSizePixel      = 0
-        ConfigFrame.Position             = UDim2.new(0, 10, 0.5, 0)
-        ConfigFrame.Size                 = UDim2.new(0, 115, 0, 30)
-        ConfigFrame.ZIndex               = 9
-        ConfigFrame.Parent               = RightHeader
+        ConfigFrame.BorderSizePixel = 0
+        ConfigFrame.Position = UDim2.new(0, 10, 0.5, 0)
+        ConfigFrame.Size = UDim2.new(0, 115, 0, 30)
+        ConfigFrame.ZIndex = 9
+        ConfigFrame.Parent = RightHeader
         AddToRegistry(ConfigFrame, "BackgroundColor3", "Top")
 
         local cfgFrameCorner = Instance.new("UICorner")
         cfgFrameCorner.CornerRadius = UDim.new(0, 4)
-        cfgFrameCorner.Parent       = ConfigFrame
+        cfgFrameCorner.Parent = ConfigFrame
 
         local cfgFrameStroke = Instance.new("UIStroke")
         cfgFrameStroke.Transparency = 0.650
-        cfgFrameStroke.Color        = CurrentTheme.Stroke
-        cfgFrameStroke.Parent       = ConfigFrame
-        table.insert(ThemeListeners, function()
-            cfgFrameStroke.Color = CurrentTheme.Stroke
-        end)
+        cfgFrameStroke.Color = CurrentTheme.Stroke
+        cfgFrameStroke.Parent = ConfigFrame
+        table.insert(ThemeListeners, function() cfgFrameStroke.Color = CurrentTheme.Stroke end)
 
         local ConfigIcon = Instance.new("TextLabel")
-        ConfigIcon.Name                 = "ConfigIcon"
-        ConfigIcon.AnchorPoint          = Vector2.new(0, 0.5)
+        ConfigIcon.Name = "ConfigIcon"
+        ConfigIcon.AnchorPoint = Vector2.new(0, 0.5)
         ConfigIcon.BackgroundTransparency = 1
-        ConfigIcon.BorderSizePixel      = 0
-        ConfigIcon.Position             = UDim2.new(0, 2, 0.5, 0)
-        ConfigIcon.Size                 = UDim2.new(0, 25, 0, 25)
-        ConfigIcon.ZIndex               = 9
-        ConfigIcon.TextColor3           = Color3.fromRGB(223, 223, 223)
-        ConfigIcon.TextTransparency     = 0.250
-        ConfigIcon.TextSize             = 20
-        ConfigIcon.Parent               = ConfigFrame
+        ConfigIcon.BorderSizePixel = 0
+        ConfigIcon.Position = UDim2.new(0, 2, 0.5, 0)
+        ConfigIcon.Size = UDim2.new(0, 25, 0, 25)
+        ConfigIcon.ZIndex = 9
+        ConfigIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
+        ConfigIcon.TextTransparency = 0.250
+        ConfigIcon.TextSize = 20
+        ConfigIcon.Parent = ConfigFrame
         SetIconMode(ConfigIcon, "pencil-square")
 
         local ConfigLine = Instance.new("Frame")
-        ConfigLine.Name                 = "ConfigLine"
-        ConfigLine.BackgroundColor3     = CurrentTheme.Stroke
+        ConfigLine.Name = "ConfigLine"
+        ConfigLine.BackgroundColor3 = CurrentTheme.Stroke
         ConfigLine.BackgroundTransparency = 0.650
-        ConfigLine.BorderSizePixel      = 0
-        ConfigLine.Position             = UDim2.new(0, 30, 0, 0)
-        ConfigLine.Size                 = UDim2.new(0, 1, 1, 0)
-        ConfigLine.Parent               = ConfigFrame
+        ConfigLine.BorderSizePixel = 0
+        ConfigLine.Position = UDim2.new(0, 30, 0, 0)
+        ConfigLine.Size = UDim2.new(0, 1, 1, 0)
+        ConfigLine.Parent = ConfigFrame
         AddToRegistry(ConfigLine, "BackgroundColor3", "Stroke")
 
         local ConfigName = Instance.new("TextLabel")
-        ConfigName.Name                 = "ConfigName"
-        ConfigName.AnchorPoint          = Vector2.new(0, 0.5)
+        ConfigName.Name = "ConfigName"
+        ConfigName.AnchorPoint = Vector2.new(0, 0.5)
         ConfigName.BackgroundTransparency = 1
-        ConfigName.BorderSizePixel      = 0
-        ConfigName.Position             = UDim2.new(0, 40, 0.5, 0)
-        ConfigName.Size                 = UDim2.new(1, -67, 0, 15)
-        ConfigName.ZIndex               = 9
-        ConfigName.Font                 = Enum.Font.GothamMedium
-        ConfigName.Text                 = DEFAULT_CONFIG_NAME
-        ConfigName.TextColor3           = CurrentTheme.Text
-        ConfigName.TextSize             = 12
-        ConfigName.TextTransparency     = 0.350
-        ConfigName.TextXAlignment       = Enum.TextXAlignment.Left
-        ConfigName.TextTruncate         = Enum.TextTruncate.AtEnd
-        ConfigName.Parent               = ConfigFrame
+        ConfigName.BorderSizePixel = 0
+        ConfigName.Position = UDim2.new(0, 40, 0.5, 0)
+        ConfigName.Size = UDim2.new(1, -67, 0, 15)
+        ConfigName.ZIndex = 9
+        ConfigName.Font = Enum.Font.GothamMedium
+        ConfigName.Text = DEFAULT_CONFIG_NAME
+        ConfigName.TextColor3 = CurrentTheme.Text
+        ConfigName.TextSize = 12
+        ConfigName.TextTransparency = 0.350
+        ConfigName.TextXAlignment = Enum.TextXAlignment.Left
+        ConfigName.TextTruncate = Enum.TextTruncate.AtEnd
+        ConfigName.Parent = ConfigFrame
         AddToRegistry(ConfigName, "TextColor3", "Text")
         TextGradient:Skip(ConfigName)
 
         local ConfigBthIcon = Instance.new("TextLabel")
-        ConfigBthIcon.Name              = "ConfigBthIcon"
-        ConfigBthIcon.AnchorPoint       = Vector2.new(1, 0.5)
+        ConfigBthIcon.Name = "ConfigBthIcon"
+        ConfigBthIcon.AnchorPoint = Vector2.new(1, 0.5)
         ConfigBthIcon.BackgroundTransparency = 1
-        ConfigBthIcon.BorderSizePixel   = 0
-        ConfigBthIcon.Position          = UDim2.new(1, -2, 0.5, 0)
-        ConfigBthIcon.Size              = UDim2.new(0, 25, 0, 25)
-        ConfigBthIcon.ZIndex            = 9
-        ConfigBthIcon.TextColor3        = Color3.fromRGB(223, 223, 223)
-        ConfigBthIcon.TextTransparency  = 0.250
-        ConfigBthIcon.TextSize          = 20
-        ConfigBthIcon.Parent            = ConfigFrame
+        ConfigBthIcon.BorderSizePixel = 0
+        ConfigBthIcon.Position = UDim2.new(1, -2, 0.5, 0)
+        ConfigBthIcon.Size = UDim2.new(0, 25, 0, 25)
+        ConfigBthIcon.ZIndex = 9
+        ConfigBthIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
+        ConfigBthIcon.TextTransparency = 0.250
+        ConfigBthIcon.TextSize = 20
+        ConfigBthIcon.Parent = ConfigFrame
         SetIconMode(ConfigBthIcon, "chevron-small-down")
 
         local ConfigMenu = Instance.new("Frame")
-        ConfigMenu.Name                 = "ConfigMenu"
-        ConfigMenu.AnchorPoint          = Vector2.new(0.5, 0)
-        ConfigMenu.BackgroundColor3     = Color3.fromRGB(20, 22, 27)
+        ConfigMenu.Name = "ConfigMenu"
+        ConfigMenu.AnchorPoint = Vector2.new(0.5, 0)
+        ConfigMenu.BackgroundColor3 = Color3.fromRGB(20, 22, 27)
         ConfigMenu.BackgroundTransparency = 0.035
-        ConfigMenu.BorderSizePixel      = 0
-        ConfigMenu.ClipsDescendants     = true
-        ConfigMenu.Position             = UDim2.new(255, 255, 255, 255)
-        ConfigMenu.Size                 = UDim2.new(0, MENU_WIDTH, 0, MENU_INITIAL_HEIGHT)
-        ConfigMenu.ZIndex               = 151
-        ConfigMenu.Visible              = false
-        ConfigMenu.Parent               = ScreenGui
+        ConfigMenu.BorderSizePixel = 0
+        ConfigMenu.ClipsDescendants = true
+        ConfigMenu.Position = UDim2.new(255, 255, 255, 255)
+        ConfigMenu.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_INITIAL_HEIGHT)
+        ConfigMenu.ZIndex = 151
+        ConfigMenu.Visible = false
+        ConfigMenu.Parent = ScreenGui
 
         local cfgMenuCorner = Instance.new("UICorner")
         cfgMenuCorner.CornerRadius = UDim.new(0, 10)
-        cfgMenuCorner.Parent       = ConfigMenu
+        cfgMenuCorner.Parent = ConfigMenu
 
         local cfgMenuLayout = Instance.new("UIListLayout")
         cfgMenuLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        cfgMenuLayout.SortOrder           = Enum.SortOrder.LayoutOrder
-        cfgMenuLayout.Padding             = UDim.new(0, 4)
-        cfgMenuLayout.Parent              = ConfigMenu
+        cfgMenuLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        cfgMenuLayout.Padding = UDim.new(0, 4)
+        cfgMenuLayout.Parent = ConfigMenu
 
         local cfgMenuStroke = Instance.new("UIStroke")
         cfgMenuStroke.Transparency = 0.650
-        cfgMenuStroke.Color        = CurrentTheme.Stroke
-        cfgMenuStroke.Parent       = ConfigMenu
-        table.insert(ThemeListeners, function()
-            cfgMenuStroke.Color = CurrentTheme.Stroke
-        end)
+        cfgMenuStroke.Color = CurrentTheme.Stroke
+        cfgMenuStroke.Parent = ConfigMenu
+        table.insert(ThemeListeners, function() cfgMenuStroke.Color = CurrentTheme.Stroke end)
 
         local cfgShadowStrokes = {}
         for _, thick in ipairs({6, 5, 4, 3}) do
             local s = Instance.new("UIStroke")
-            s.Thickness         = thick
-            s.Color             = Color3.new(0, 0, 0)
-            s.Transparency      = 1
-            s.ApplyStrokeMode   = Enum.ApplyStrokeMode.Border
-            s.Parent            = ConfigMenu
+            s.Thickness = thick
+            s.Color = Color3.new(0, 0, 0)
+            s.Transparency = 1
+            s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            s.Parent = ConfigMenu
             table.insert(cfgShadowStrokes, s)
         end
 
@@ -5718,122 +5622,120 @@ settingsBuilder:Toggle({
         end
 
         local InputFrame = Instance.new("Frame")
-        InputFrame.Name                 = "InputFrame"
+        InputFrame.Name = "InputFrame"
         InputFrame.BackgroundTransparency = 1
-        InputFrame.BorderSizePixel      = 0
-        InputFrame.Size                 = UDim2.new(1, 0, 0, 30)
-        InputFrame.ZIndex               = 154
-        InputFrame.LayoutOrder          = 0
-        InputFrame.Parent               = ConfigMenu
+        InputFrame.BorderSizePixel = 0
+        InputFrame.Size = UDim2.new(1, 0, 0, 30)
+        InputFrame.ZIndex = 154
+        InputFrame.LayoutOrder = 0
+        InputFrame.Parent = ConfigMenu
 
         local BasedLabel = Instance.new("TextLabel")
-        BasedLabel.Name                 = "BasedLabel"
+        BasedLabel.Name = "BasedLabel"
         BasedLabel.BackgroundTransparency = 1
-        BasedLabel.BorderSizePixel      = 0
-        BasedLabel.Position             = UDim2.new(0, 11, 0, 6)
-        BasedLabel.Size                 = UDim2.new(0, 60, 0, 15)
-        BasedLabel.ZIndex               = 154
-        BasedLabel.Font                 = Enum.Font.GothamMedium
-        BasedLabel.Text                 = "配置列表"
-        BasedLabel.TextColor3           = Color3.fromRGB(255, 255, 255)
-        BasedLabel.TextSize             = 13
-        BasedLabel.TextTransparency     = 0.200
-        BasedLabel.TextXAlignment       = Enum.TextXAlignment.Left
-        BasedLabel.Parent               = InputFrame
+        BasedLabel.BorderSizePixel = 0
+        BasedLabel.Position = UDim2.new(0, 11, 0, 6)
+        BasedLabel.Size = UDim2.new(0, 60, 0, 15)
+        BasedLabel.ZIndex = 154
+        BasedLabel.Font = Enum.Font.GothamMedium
+        BasedLabel.Text = "配置列表"
+        BasedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        BasedLabel.TextSize = 13
+        BasedLabel.TextTransparency = 0.200
+        BasedLabel.TextXAlignment = Enum.TextXAlignment.Left
+        BasedLabel.Parent = InputFrame
         AddToRegistry(BasedLabel, "TextColor3", "Text")
         TextGradient:Skip(BasedLabel)
 
         local LineFrame = Instance.new("Frame")
-        LineFrame.Name                  = "LineFrame"
-        LineFrame.AnchorPoint           = Vector2.new(0.5, 1)
-        LineFrame.BackgroundColor3      = CurrentTheme.Stroke
+        LineFrame.Name = "LineFrame"
+        LineFrame.AnchorPoint = Vector2.new(0.5, 1)
+        LineFrame.BackgroundColor3 = CurrentTheme.Stroke
         LineFrame.BackgroundTransparency = 0.650
-        LineFrame.BorderSizePixel       = 0
-        LineFrame.Position              = UDim2.new(0.5, 0, 1, 0)
-        LineFrame.Size                  = UDim2.new(1, -20, 0, 1)
-        LineFrame.ZIndex                = 154
-        LineFrame.Parent                = InputFrame
+        LineFrame.BorderSizePixel = 0
+        LineFrame.Position = UDim2.new(0.5, 0, 1, 0)
+        LineFrame.Size = UDim2.new(1, -20, 0, 1)
+        LineFrame.ZIndex = 154
+        LineFrame.Parent = InputFrame
         AddToRegistry(LineFrame, "BackgroundColor3", "Stroke")
 
         local BasedHandler = Instance.new("Frame")
-        BasedHandler.Name               = "BasedHandler"
-        BasedHandler.AnchorPoint        = Vector2.new(1, 0)
+        BasedHandler.Name = "BasedHandler"
+        BasedHandler.AnchorPoint = Vector2.new(1, 0)
         BasedHandler.BackgroundTransparency = 1
-        BasedHandler.BorderSizePixel    = 0
-        BasedHandler.Position           = UDim2.new(1, -11, 0, 2)
-        BasedHandler.Size               = UDim2.new(0, 130, 0, 25)
-        BasedHandler.ZIndex             = 154
-        BasedHandler.Parent             = InputFrame
+        BasedHandler.BorderSizePixel = 0
+        BasedHandler.Position = UDim2.new(1, -11, 0, 2)
+        BasedHandler.Size = UDim2.new(0, 130, 0, 25)
+        BasedHandler.ZIndex = 154
+        BasedHandler.Parent = InputFrame
 
         local BasedLayout = Instance.new("UIListLayout")
-        BasedLayout.FillDirection        = Enum.FillDirection.Horizontal
-        BasedLayout.HorizontalAlignment  = Enum.HorizontalAlignment.Right
-        BasedLayout.SortOrder            = Enum.SortOrder.LayoutOrder
-        BasedLayout.VerticalAlignment    = Enum.VerticalAlignment.Center
-        BasedLayout.Padding              = UDim.new(0, 5)
-        BasedLayout.Parent               = BasedHandler
+        BasedLayout.FillDirection = Enum.FillDirection.Horizontal
+        BasedLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        BasedLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        BasedLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        BasedLayout.Padding = UDim.new(0, 5)
+        BasedLayout.Parent = BasedHandler
 
         local TextInput = Instance.new("Frame")
-        TextInput.Name              = "TextInput"
-        TextInput.BackgroundColor3  = Color3.fromRGB(26, 28, 36)
-        TextInput.BorderSizePixel   = 0
-        TextInput.ClipsDescendants  = true
-        TextInput.Size              = UDim2.new(0, 100, 0, 18)
-        TextInput.ZIndex            = 154
-        TextInput.LayoutOrder       = 1
-        TextInput.Parent            = BasedHandler
+        TextInput.Name = "TextInput"
+        TextInput.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
+        TextInput.BorderSizePixel = 0
+        TextInput.ClipsDescendants = true
+        TextInput.Size = UDim2.new(0, 100, 0, 18)
+        TextInput.ZIndex = 154
+        TextInput.LayoutOrder = 1
+        TextInput.Parent = BasedHandler
         Instance.new("UICorner", TextInput).CornerRadius = UDim.new(0, 4)
 
         local TextInputStroke = Instance.new("UIStroke")
         TextInputStroke.Transparency = 0.650
-        TextInputStroke.Color        = CurrentTheme.Stroke
-        TextInputStroke.Parent       = TextInput
-        table.insert(ThemeListeners, function()
-            TextInputStroke.Color = CurrentTheme.Stroke
-        end)
+        TextInputStroke.Color = CurrentTheme.Stroke
+        TextInputStroke.Parent = TextInput
+        table.insert(ThemeListeners, function() TextInputStroke.Color = CurrentTheme.Stroke end)
 
         local TextBox = Instance.new("TextBox")
-        TextBox.AnchorPoint           = Vector2.new(0, 0.5)
+        TextBox.AnchorPoint = Vector2.new(0, 0.5)
         TextBox.BackgroundTransparency = 1
-        TextBox.BorderSizePixel       = 0
-        TextBox.Position              = UDim2.new(0, 5, 0.5, 0)
-        TextBox.Size                  = UDim2.new(1, -5, 0, 17)
-        TextBox.ZIndex                = 154
-        TextBox.ClearTextOnFocus      = false
-        TextBox.Font                  = Enum.Font.GothamMedium
-        TextBox.PlaceholderText       = "配置名称 ..."
-        TextBox.Text                  = ""
-        TextBox.TextColor3            = Color3.fromRGB(255, 255, 255)
-        TextBox.TextSize              = 11
-        TextBox.TextTransparency      = 0.350
-        TextBox.TextXAlignment        = Enum.TextXAlignment.Left
-        TextBox.Parent                = TextInput
+        TextBox.BorderSizePixel = 0
+        TextBox.Position = UDim2.new(0, 5, 0.5, 0)
+        TextBox.Size = UDim2.new(1, -5, 0, 17)
+        TextBox.ZIndex = 154
+        TextBox.ClearTextOnFocus = false
+        TextBox.Font = Enum.Font.GothamMedium
+        TextBox.PlaceholderText = "配置名称 ..."
+        TextBox.Text = ""
+        TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TextBox.TextSize = 11
+        TextBox.TextTransparency = 0.350
+        TextBox.TextXAlignment = Enum.TextXAlignment.Left
+        TextBox.Parent = TextInput
         TextGradient:Skip(TextBox)
 
         local AddBtn = Instance.new("Frame")
-        AddBtn.Name               = "AddConfigBtn"
-        AddBtn.BackgroundColor3   = Color3.fromRGB(39, 40, 49)
+        AddBtn.Name = "AddConfigBtn"
+        AddBtn.BackgroundColor3 = Color3.fromRGB(39, 40, 49)
         AddBtn.BackgroundTransparency = 1
-        AddBtn.BorderSizePixel    = 0
-        AddBtn.ClipsDescendants   = true
-        AddBtn.Size               = UDim2.new(0, 20, 0, 18)
-        AddBtn.ZIndex             = 153
-        AddBtn.LayoutOrder        = 2
-        AddBtn.Parent             = BasedHandler
+        AddBtn.BorderSizePixel = 0
+        AddBtn.ClipsDescendants = true
+        AddBtn.Size = UDim2.new(0, 20, 0, 18)
+        AddBtn.ZIndex = 153
+        AddBtn.LayoutOrder = 2
+        AddBtn.Parent = BasedHandler
         Instance.new("UICorner", AddBtn).CornerRadius = UDim.new(0, 4)
 
         local AddIcon = Instance.new("TextLabel")
-        AddIcon.Name               = "AddIcon"
-        AddIcon.AnchorPoint        = Vector2.new(0.5, 0.5)
+        AddIcon.Name = "AddIcon"
+        AddIcon.AnchorPoint = Vector2.new(0.5, 0.5)
         AddIcon.BackgroundTransparency = 1
-        AddIcon.BorderSizePixel    = 0
-        AddIcon.Position           = UDim2.new(0.5, 0, 0.5, 0)
-        AddIcon.Size               = UDim2.new(1, 0, 1, 0)
-        AddIcon.ZIndex             = 153
-        AddIcon.TextColor3         = Color3.fromRGB(223, 223, 223)
-        AddIcon.TextTransparency   = 0.350
-        AddIcon.TextSize           = 15
-        AddIcon.Parent             = AddBtn
+        AddIcon.BorderSizePixel = 0
+        AddIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+        AddIcon.Size = UDim2.new(1, 0, 1, 0)
+        AddIcon.ZIndex = 153
+        AddIcon.TextColor3 = Color3.fromRGB(223, 223, 223)
+        AddIcon.TextTransparency = 0.350
+        AddIcon.TextSize = 15
+        AddIcon.Parent = AddBtn
         SetIconMode(AddIcon, "plus-large")
 
         local RefreshConfigList
@@ -5845,29 +5747,29 @@ settingsBuilder:Toggle({
 
         local function MakeSymbolButton(parent, iconName, hoverColor, callback, layoutOrder)
             local btn = Instance.new("TextButton")
-            btn.BackgroundColor3    = Color3.fromRGB(39, 40, 49)
+            btn.BackgroundColor3 = Color3.fromRGB(39, 40, 49)
             btn.BackgroundTransparency = 1
-            btn.BorderSizePixel     = 0
-            btn.ClipsDescendants    = true
-            btn.Size                = UDim2.new(0, 20, 0, 18)
-            btn.ZIndex              = 153
-            btn.Text                = ""
-            btn.AutoButtonColor     = false
-            btn.LayoutOrder         = layoutOrder or 1
-            btn.Parent              = parent
+            btn.BorderSizePixel = 0
+            btn.ClipsDescendants = true
+            btn.Size = UDim2.new(0, 20, 0, 18)
+            btn.ZIndex = 153
+            btn.Text = ""
+            btn.AutoButtonColor = false
+            btn.LayoutOrder = layoutOrder or 1
+            btn.Parent = parent
             Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 
             local icon = Instance.new("TextLabel")
-            icon.AnchorPoint        = Vector2.new(0.5, 0.5)
+            icon.AnchorPoint = Vector2.new(0.5, 0.5)
             icon.BackgroundTransparency = 1
-            icon.BorderSizePixel    = 0
-            icon.Position           = UDim2.new(0.5, 0, 0.5, 0)
-            icon.Size               = UDim2.new(1, 0, 1, 0)
-            icon.ZIndex             = 154
-            icon.TextColor3         = Color3.fromRGB(223, 223, 223)
-            icon.TextTransparency   = 0.400
-            icon.TextSize           = 15
-            icon.Parent             = btn
+            icon.BorderSizePixel = 0
+            icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+            icon.Size = UDim2.new(1, 0, 1, 0)
+            icon.ZIndex = 154
+            icon.TextColor3 = Color3.fromRGB(223, 223, 223)
+            icon.TextTransparency = 0.400
+            icon.TextSize = 15
+            icon.Parent = btn
             SetIconMode(icon, iconName)
 
             btn.MouseEnter:Connect(function()
@@ -5883,57 +5785,57 @@ settingsBuilder:Toggle({
 
         local function RenderConfigItem(name, order)
             local item = Instance.new("Frame")
-            item.Name              = "ConfigItem"
-            item.BackgroundColor3  = Color3.fromRGB(21, 20, 27)
+            item.Name = "ConfigItem"
+            item.BackgroundColor3 = Color3.fromRGB(21, 20, 27)
             item.BackgroundTransparency = 0
-            item.BorderSizePixel   = 0
-            item.Size              = UDim2.new(1, -10, 0, 30)
-            item.ZIndex            = 153
-            item.LayoutOrder       = order
-            item.Parent            = ConfigMenu
+            item.BorderSizePixel = 0
+            item.Size = UDim2.new(1, -10, 0, 30)
+            item.ZIndex = 153
+            item.LayoutOrder = order
+            item.Parent = ConfigMenu
             item:SetAttribute("ConfigItem", true)
             Instance.new("UICorner", item).CornerRadius = UDim.new(0, 5)
 
             local itemStroke = Instance.new("UIStroke")
             itemStroke.Transparency = 0.500
-            itemStroke.Color        = CurrentTheme.Stroke
-            itemStroke.Parent       = item
+            itemStroke.Color = CurrentTheme.Stroke
+            itemStroke.Parent = item
             table.insert(ThemeListeners, function()
                 itemStroke.Color = CurrentTheme.Stroke
             end)
 
             local itemLabel = Instance.new("TextLabel")
-            itemLabel.Name              = "ConfigNameLbl"
+            itemLabel.Name = "ConfigNameLbl"
             itemLabel.BackgroundTransparency = 1
-            itemLabel.BorderSizePixel   = 0
-            itemLabel.Position          = UDim2.new(0, 11, 0, 7)
-            itemLabel.Size              = UDim2.new(1, -95, 0, 15)
-            itemLabel.ZIndex            = 153
-            itemLabel.Font              = Enum.Font.GothamMedium
-            itemLabel.Text              = name
-            itemLabel.TextColor3        = Color3.fromRGB(255, 255, 255)
-            itemLabel.TextSize          = 13
-            itemLabel.TextTransparency  = 0.200
-            itemLabel.TextXAlignment    = Enum.TextXAlignment.Left
-            itemLabel.TextTruncate      = Enum.TextTruncate.AtEnd
-            itemLabel.Parent            = item
+            itemLabel.BorderSizePixel = 0
+            itemLabel.Position = UDim2.new(0, 11, 0, 7)
+            itemLabel.Size = UDim2.new(1, -95, 0, 15)
+            itemLabel.ZIndex = 153
+            itemLabel.Font = Enum.Font.GothamMedium
+            itemLabel.Text = name
+            itemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            itemLabel.TextSize = 13
+            itemLabel.TextTransparency = 0.200
+            itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+            itemLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            itemLabel.Parent = item
 
             local btnHolder = Instance.new("Frame")
-            btnHolder.AnchorPoint       = Vector2.new(1, 0)
+            btnHolder.AnchorPoint = Vector2.new(1, 0)
             btnHolder.BackgroundTransparency = 1
-            btnHolder.BorderSizePixel   = 0
-            btnHolder.Position          = UDim2.new(1, -11, 0, 2)
-            btnHolder.Size              = UDim2.new(0, 80, 0, 25)
-            btnHolder.ZIndex            = 153
-            btnHolder.Parent            = item
+            btnHolder.BorderSizePixel = 0
+            btnHolder.Position = UDim2.new(1, -11, 0, 2)
+            btnHolder.Size = UDim2.new(0, 80, 0, 25)
+            btnHolder.ZIndex = 153
+            btnHolder.Parent = item
 
             local btnLayout = Instance.new("UIListLayout")
-            btnLayout.FillDirection        = Enum.FillDirection.Horizontal
-            btnLayout.HorizontalAlignment  = Enum.HorizontalAlignment.Right
-            btnLayout.SortOrder            = Enum.SortOrder.LayoutOrder
-            btnLayout.VerticalAlignment    = Enum.VerticalAlignment.Center
-            btnLayout.Padding              = UDim.new(0, 5)
-            btnLayout.Parent               = btnHolder
+            btnLayout.FillDirection = Enum.FillDirection.Horizontal
+            btnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+            btnLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            btnLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+            btnLayout.Padding = UDim.new(0, 5)
+            btnLayout.Parent = btnHolder
 
             MakeSymbolButton(
                 btnHolder, "trash-can",
@@ -6097,16 +5999,16 @@ settingsBuilder:Toggle({
         end
 
         local OpenButton = Instance.new("TextButton")
-        OpenButton.Name              = "OpenButton"
-        OpenButton.AnchorPoint       = Vector2.new(0, 0.5)
+        OpenButton.Name = "OpenButton"
+        OpenButton.AnchorPoint = Vector2.new(0, 0.5)
         OpenButton.BackgroundTransparency = 1
-        OpenButton.BorderSizePixel   = 0
-        OpenButton.Position          = UDim2.new(0, 31, 0.5, 0)
-        OpenButton.Size              = UDim2.new(1, -31, 1, 0)
-        OpenButton.ZIndex            = 10
-        OpenButton.Text              = ""
-        OpenButton.AutoButtonColor   = false
-        OpenButton.Parent            = ConfigFrame
+        OpenButton.BorderSizePixel = 0
+        OpenButton.Position = UDim2.new(0, 31, 0.5, 0)
+        OpenButton.Size = UDim2.new(1, -31, 1, 0)
+        OpenButton.ZIndex = 10
+        OpenButton.Text = ""
+        OpenButton.AutoButtonColor = false
+        OpenButton.Parent = ConfigFrame
 
         OpenButton.MouseButton1Click:Connect(function()
             if isOpen then
@@ -6117,16 +6019,16 @@ settingsBuilder:Toggle({
         end)
 
         local SaveIconInput = Instance.new("TextButton")
-        SaveIconInput.Name              = "SaveIconInput"
-        SaveIconInput.AnchorPoint       = Vector2.new(0, 0.5)
+        SaveIconInput.Name = "SaveIconInput"
+        SaveIconInput.AnchorPoint = Vector2.new(0, 0.5)
         SaveIconInput.BackgroundTransparency = 1
-        SaveIconInput.BorderSizePixel   = 0
-        SaveIconInput.Position          = UDim2.new(0, 0, 0.5, 0)
-        SaveIconInput.Size              = UDim2.new(0, 31, 1, 0)
-        SaveIconInput.ZIndex            = 11
-        SaveIconInput.Text              = ""
-        SaveIconInput.AutoButtonColor   = false
-        SaveIconInput.Parent            = ConfigFrame
+        SaveIconInput.BorderSizePixel = 0
+        SaveIconInput.Position = UDim2.new(0, 0, 0.5, 0)
+        SaveIconInput.Size = UDim2.new(0, 31, 1, 0)
+        SaveIconInput.ZIndex = 11
+        SaveIconInput.Text = ""
+        SaveIconInput.AutoButtonColor = false
+        SaveIconInput.Parent = ConfigFrame
 
         SaveIconInput.MouseEnter:Connect(function()
             Tween(ConfigIcon, { TextTransparency = 0.100 }, TWEEN_SPEED)
@@ -6141,12 +6043,12 @@ settingsBuilder:Toggle({
         end)
 
         local AddBtnInput = Instance.new("TextButton")
-        AddBtnInput.Size              = UDim2.new(1, 0, 1, 0)
+        AddBtnInput.Size = UDim2.new(1, 0, 1, 0)
         AddBtnInput.BackgroundTransparency = 1
-        AddBtnInput.Text              = ""
-        AddBtnInput.AutoButtonColor   = false
-        AddBtnInput.ZIndex            = 155
-        AddBtnInput.Parent            = AddBtn
+        AddBtnInput.Text = ""
+        AddBtnInput.AutoButtonColor = false
+        AddBtnInput.ZIndex = 155
+        AddBtnInput.Parent = AddBtn
 
         AddBtnInput.MouseEnter:Connect(function()
             Tween(AddIcon, { TextTransparency = 0.100 }, TWEEN_SPEED)
@@ -6161,9 +6063,9 @@ settingsBuilder:Toggle({
             cfgName = string.sub(cfgName, 1, 24)
 
             if WriteConfig(cfgName, true) then
-                TextBox.Text       = ""
+                TextBox.Text = ""
                 selectedConfigName = cfgName
-                ConfigName.Text    = cfgName
+                ConfigName.Text = cfgName
                 RefreshConfigList()
             end
         end)
@@ -6906,7 +6808,7 @@ settingsBuilder:Toggle({
             ExecStatus = "部分兼容：缺少 " .. table.concat(_ObsidianMissing, ", ") .. "（只能使用UI的部分功能）"
             ExecColor  = Color3.fromRGB(230, 170, 60)
         else
-            ExecStatus = "不兼容款脚本：缺少 " .. table.concat(_ObsidianMissing, ", ")
+            ExecStatus = "不兼容殺脚本：缺少 " .. table.concat(_ObsidianMissing, ", ")
             ExecColor  = Color3.fromRGB(220, 70, 70)
         end
 
