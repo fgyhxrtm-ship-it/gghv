@@ -1074,30 +1074,80 @@ end })
 
     local tabCommon = Soundify(Window:Tab("通用", "83701039519151"))
 
-    local sectionSelf = tabCommon:Section({ Name = "自身修改", SubName = "本地玩家修改", Logo = "83701039519151", Collapsible = true, Collapsed = true })
-    local speedEnabled, jumpEnabled = false, false
-    local speedValue, jumpValue = 16, 50
-    local featureHeartbeat = nil
-    local function updateFeatureHeartbeat()
-        if (speedEnabled or jumpEnabled) and not featureHeartbeat then
-            featureHeartbeat = RunService.Heartbeat:Connect(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if not hum then return end
-                if speedEnabled then hum.WalkSpeed = speedValue else hum.WalkSpeed = 16 end
-                if jumpEnabled then hum.JumpPower = jumpValue else hum.JumpPower = 50 end
-            end)
-        elseif not (speedEnabled or jumpEnabled) and featureHeartbeat then
-            featureHeartbeat:Disconnect(); featureHeartbeat = nil
-            local char = LocalPlayer.Character
-            if char then local hum = char:FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end end
+local sectionSelf = tabCommon:Section({ Name = "自身修改", SubName = "本地玩家修改", Logo = "83701039519151", Collapsible = true, Collapsed = true })
+local speedEnabled, jumpEnabled = false, false
+local speedValue, jumpValue = 16, 50
+local featureHeartbeat = nil
+-- 保存每个角色的原始值，关闭时恢复
+local origSpeed, origJumpPower, origJumpHeight, origUseJumpPower = nil, nil, nil, nil
+local origChar = nil
+
+local function readOriginals(hum)
+    if origChar == hum.Parent then return end
+    origChar = hum.Parent
+    origSpeed = hum.WalkSpeed
+    origUseJumpPower = hum.UseJumpPower
+    origJumpPower = hum.JumpPower
+    origJumpHeight = hum.JumpHeight
+end
+
+local function stopFeatureHeartbeat()
+    if featureHeartbeat then
+        featureHeartbeat:Disconnect()
+        featureHeartbeat = nil
+    end
+    -- 关闭时恢复原始值（若角色还在）
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and origChar == char then
+            if origSpeed then hum.WalkSpeed = origSpeed end
+            if origUseJumpPower ~= nil then
+                hum.UseJumpPower = origUseJumpPower
+                if origUseJumpPower then
+                    if origJumpPower then hum.JumpPower = origJumpPower end
+                else
+                    if origJumpHeight then hum.JumpHeight = origJumpHeight end
+                end
+            end
         end
     end
-    sectionSelf:Toggle({ Name = "改速度", Value = false, Callback = function(v) speedEnabled = v; updateFeatureHeartbeat() end })
-    sectionSelf:Slider({ Name = "速度数值", Value = { Min = 0, Max = 500, Default = 16 }, Callback = function(v) speedValue = v end })
-    sectionSelf:Toggle({ Name = "改跳跃", Value = false, Callback = function(v) jumpEnabled = v; updateFeatureHeartbeat() end })
-    sectionSelf:Slider({ Name = "跳跃高度", Value = { Min = 0, Max = 500, Default = 50 }, Callback = function(v) jumpValue = v end })
+    origChar = nil
+    origSpeed, origJumpPower, origJumpHeight, origUseJumpPower = nil, nil, nil, nil
+end
+
+local function startFeatureHeartbeat()
+    if featureHeartbeat then return end
+    featureHeartbeat = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        readOriginals(hum)
+        if speedEnabled then hum.WalkSpeed = speedValue end
+        if jumpEnabled then
+            -- 关键：沿用服务器原本的跳跃模式，不强行改 UseJumpPower
+            if hum.UseJumpPower then
+                hum.JumpPower = jumpValue
+            else
+                hum.JumpHeight = jumpValue
+            end
+        end
+    end)
+end
+
+local function updateFeatureHeartbeat()
+    if speedEnabled or jumpEnabled then
+        startFeatureHeartbeat()
+    else
+        stopFeatureHeartbeat()
+    end
+end
+
+sectionSelf:Toggle({ Name = "改速度", Value = false, Callback = function(v) speedEnabled = v; updateFeatureHeartbeat() end })
+sectionSelf:Slider({ Name = "速度数值", Value = { Min = 0, Max = 500, Default = 16 }, Callback = function(v) speedValue = v end })
+sectionSelf:Toggle({ Name = "改跳跃", Value = false, Callback = function(v) jumpEnabled = v; updateFeatureHeartbeat() end })
+sectionSelf:Slider({ Name = "跳跃高度", Value = { Min = 0, Max = 500, Default = 50 }, Callback = function(v) jumpValue = v end })
 
     local brightnessEnabled = false
     local brightnessValue = 1
