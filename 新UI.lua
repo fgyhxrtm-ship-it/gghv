@@ -10030,7 +10030,7 @@ end
         EyebrowText.BorderSizePixel = 0
         EyebrowText.FontFace = HomeFonts.eyebrow
         EyebrowText.TextSize = 10
-        EyebrowText.Text = "FengYu Hub"
+        EyebrowText.Text = "KuanScript Hub"
         EyebrowText.TextColor3 = CurrentTheme.Accent
         EyebrowText.TextXAlignment = Enum.TextXAlignment.Left
         EyebrowText.TextYAlignment = Enum.TextYAlignment.Center
@@ -10046,7 +10046,7 @@ end
         HeroTitle.BorderSizePixel = 0
         HeroTitle.FontFace = HomeFonts.title
         HeroTitle.TextSize = 46
-        HeroTitle.Text = "No Next"
+        HeroTitle.Text = "款脚本"
         HeroTitle.TextColor3 = CurrentTheme.Text
         HeroTitle.TextXAlignment = Enum.TextXAlignment.Left
         HeroTitle.TextYAlignment = Enum.TextYAlignment.Center
