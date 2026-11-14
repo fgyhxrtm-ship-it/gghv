@@ -7347,7 +7347,7 @@ end)
     BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
     BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
 -- ==========================================
--- 移植：背景图、点击贴图、启动音效
+-- 强制塞到 UI 设置最底下的代码
 -- ==========================================
 if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
 if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
@@ -7366,11 +7366,12 @@ local bgOptions = {
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
--- 自动排在“边框风格”下面
-local bgRow = Instance.new("Frame")
-bgRow.Size = UDim2.new(1, -24, 0, 42)
-bgRow.BackgroundTransparency = 1
-bgRow.Parent = SettingsScroll
+-- 强制把背景图排到 Y = 350 的位置
+local bgFrame = Instance.new("Frame")
+bgFrame.Size = UDim2.new(1, -24, 0, 42)
+bgFrame.Position = UDim2.new(0, 12, 0, 350)
+bgFrame.BackgroundTransparency = 1
+bgFrame.Parent = SettingsScroll
 
 local bgLabel = Instance.new("TextLabel")
 bgLabel.Size = UDim2.new(1, -130, 0, 18)
@@ -7381,7 +7382,7 @@ bgLabel.Text = "切换背景图"
 bgLabel.TextSize = 13
 bgLabel.TextXAlignment = Enum.TextXAlignment.Left
 bgLabel.TextColor3 = CurrentTheme.Text
-bgLabel.Parent = bgRow
+bgLabel.Parent = bgFrame
 
 local bgBtn = Instance.new("TextButton")
 bgBtn.Size = UDim2.new(0, 100, 0, 26)
@@ -7390,7 +7391,7 @@ bgBtn.AnchorPoint = Vector2.new(1, 0.5)
 bgBtn.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
 bgBtn.Text = ""
 bgBtn.AutoButtonColor = false
-bgBtn.Parent = bgRow
+bgBtn.Parent = bgFrame
 Instance.new("UICorner", bgBtn).CornerRadius = UDim.new(0, 5)
 
 local bgValueLbl = Instance.new("TextLabel")
@@ -7470,14 +7471,13 @@ bgBtn.MouseButton1Click:Connect(function()
         isOpen = true
     end
 end)
-
 MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
     _G.KuanClickFxEnabled = enabled
-end)
+end, 400)
 
 MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
     _G.KuanStartSoundEnabled = enabled
-end)
+end, 442)
 
     local CustPage = Instance.new("Frame")
     CustPage.Size = UDim2.new(1, -151, 1, 0)
