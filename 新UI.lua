@@ -9916,8 +9916,7 @@ end
 HomeFonts.eyebrow = Font.fromEnum(Enum.Font.GothamBold)
 HomeFonts.title   = Font.fromEnum(Enum.Font.GothamBold)
 HomeFonts.body    = Font.fromEnum(Enum.Font.Gotham)
-        end
-
+        
         local Root = Instance.new("Frame")
         Root.Name = "HomeDashboard"
         Root.Size = UDim2.new(1, -8, 0, 0)
