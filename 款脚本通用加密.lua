@@ -2,7 +2,7 @@ _G.KuanClickFxEnabled = _G.KuanClickFxEnabled ~= false
 _G.KuanStartSoundEnabled = _G.KuanStartSoundEnabled ~= false
 
 local success, library = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/UI%20(1).lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/%E6%96%B0UI.lua"))()
 end)
 
 if not success then
@@ -150,7 +150,7 @@ local selfRole
 if isAuthor(LocalPlayer.Name) then selfRole = "款脚本作者"
 elseif isTester(LocalPlayer.Name) then selfRole = "测试官"
 elseif isAdmin(LocalPlayer.Name) then selfRole = "测试人员"
-else selfRole = nil end
+else selfRole = "款脚本用户" end
 local function canSeeTag(myName, targetName)
     local myRank = getRank(myName)
     local targetRank = getRank(targetName)
@@ -168,7 +168,7 @@ local function createTag(player)
     if not head then return end
 
     local rank = getRank(player.Name)
-    local mainTitle = "款脚本"
+    local mainTitle = "款脚本用户"
     if rank == 3 then mainTitle = "款脚本作者"
     elseif rank == 2 then mainTitle = "测试官"
     elseif rank == 1 then mainTitle = "测试人员" end
@@ -1042,7 +1042,7 @@ local function StartMain()
             Script = { Text = "更新日志", Icon = "no" },
         },
         Changelog = {
-            { Title = "13.0版本", Description = "重做了彩蛋1、添加领域区域、添加了新音乐和娱乐功能、添加测试官" },
+            { Title = "14.0版本", Description = "更新了UI、推出了UI特效、添加普通成员关闭头街" },
         },
     })
 
@@ -1056,26 +1056,21 @@ local function StartMain()
     Feng:Social({ Name = "测试人员", SubName = "耄耋", SmlName = " 快手号", copy = "1420771195", Cbn = "复制", Logo = "rbxassetid://80607128221856" })
     Feng:Social({ Name = "测试官", SubName = "noob45", SmlName = " QQ", copy = "3295626426", Cbn = "复制", Logo = "rbxassetid://118907524255142" })
     Feng:Social({ Name = "测试官", SubName = "纾苇", SmlName = " QQ", copy = "3528796314", Cbn = "复制", Logo = "rbxassetid://77935840039458" })
-    Feng:Social({ Name = "测试人员", SubName = "嵩", SmlName = " QQ", copy = "3629335696", Cbn = "复制", Logo = "rbxassetid://71291793625126" })
-    Feng:Social({ Name = "测试人员", SubName = "林木", SmlName = " QQ", copy = "234667395", Cbn = "复制", Logo = "rbxassetid://93085584819970" })
-    Feng:Social({ Name = "款脚本前作者", SubName = "付款", SmlName = "QQ", copy = "1973873103", Cbn = "复制", Logo = "rbxassetid://81807176674671" })
     Feng:Social({ Name = "款脚本群", SubName = "款脚本", SmlName = "QQ群", copy = "1056676792", Cbn = "复制", Logo = "rbxassetid://83701039519151" })
     Feng:Social({ Name = "殺脚本作者(思师)", SubName = "风御 X", SmlName = "QQ", copy = "1926190957", Cbn = "复制", Logo = "rbxassetid://70554553650974" })
     Feng:Social({ Name = "殺脚本群", SubName = "殺脚本", SmlName = "QQ群", copy = "958022428", Cbn = "复制", Logo = "rbxassetid://84830962019412" })
 
     Window:TabDivider()
 
-    if selfRole then
-        local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
-        local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关", Logo = "83701039519151", Collapsible = true, Collapsed = true })
-        sectionTag:Toggle({ Name = "显示头顶头衔（仅作者/测试人员生效）", Value = true, Callback = function(v)
-            if v then
-                refreshAllTags()
-            else
-                for p in pairs(activeTags) do clearTag(p) end
-            end
-        end })
+ local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
+local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关", Logo = "83701039519151", Collapsible = true, Collapsed = true })
+sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = function(v)
+    if v then
+        refreshAllTags()
+    else
+        for p in pairs(activeTags) do clearTag(p) end
     end
+end })
 
     local tabCommon = Soundify(Window:Tab("通用", "83701039519151"))
 
