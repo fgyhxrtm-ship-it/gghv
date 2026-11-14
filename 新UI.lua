@@ -7345,7 +7345,135 @@ end)
     end, 132)
 
     BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
+if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
+if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
 
+local bgImage = Instance.new("ImageLabel")
+bgImage.Size = UDim2.new(1, 0, 1, 0)
+bgImage.BackgroundTransparency = 1
+bgImage.ZIndex = 0
+bgImage.Parent = MainFrame
+Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
+
+local bgOptions = {
+    ["默认背景"]     = "",
+    ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/mmexport1792866121556.webp",
+    ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792867023409.jpg",
+    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
+}
+
+local bgFrame = Instance.new("Frame")
+bgFrame.Size = UDim2.new(1, -24, 0, 42)
+bgFrame.Position = UDim2.new(0, 12, 0, 174)
+bgFrame.BackgroundTransparency = 1
+bgFrame.Parent = SettingsScroll
+
+local bgLabel = Instance.new("TextLabel")
+bgLabel.Size = UDim2.new(1, -130, 0, 18)
+bgLabel.Position = UDim2.new(0, 15, 0.5, -9)
+bgLabel.BackgroundTransparency = 1
+bgLabel.Font = Enum.Font.GothamMedium
+bgLabel.Text = "切换背景图"
+bgLabel.TextSize = 13
+bgLabel.TextXAlignment = Enum.TextXAlignment.Left
+bgLabel.TextColor3 = CurrentTheme.Text
+bgLabel.Parent = bgFrame
+
+local bgBtn = Instance.new("TextButton")
+bgBtn.Size = UDim2.new(0, 100, 0, 26)
+bgBtn.Position = UDim2.new(1, -15, 0.5, 0)
+bgBtn.AnchorPoint = Vector2.new(1, 0.5)
+bgBtn.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
+bgBtn.Text = ""
+bgBtn.AutoButtonColor = false
+bgBtn.Parent = bgFrame
+Instance.new("UICorner", bgBtn).CornerRadius = UDim.new(0, 5)
+
+local bgValueLbl = Instance.new("TextLabel")
+bgValueLbl.Size = UDim2.new(1, -10, 1, 0)
+bgValueLbl.Position = UDim2.new(0, 8, 0, 0)
+bgValueLbl.BackgroundTransparency = 1
+bgValueLbl.Font = Enum.Font.GothamBold
+bgValueLbl.TextSize = 11
+bgValueLbl.TextXAlignment = Enum.TextXAlignment.Left
+bgValueLbl.TextColor3 = CurrentTheme.Text
+bgValueLbl.Text = "默认背景"
+bgValueLbl.Parent = bgBtn
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.new(0, 190, 0, 4 * 30 + 8)
+menu.BackgroundColor3 = CurrentTheme.Main
+menu.BorderSizePixel = 0
+menu.Visible = false
+menu.ZIndex = 220
+menu.Parent = MainFrame
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 8)
+local list = Instance.new("UIListLayout")
+list.Parent = menu
+
+local isOpen = false
+local options = {"默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景"}
+for _, opt in ipairs(options) do
+    local row = Instance.new("TextButton")
+    row.Size = UDim2.new(1, 0, 0, 30)
+    row.BackgroundTransparency = 0.6
+    row.BackgroundColor3 = CurrentTheme.Main
+    row.Text = ""
+    row.Parent = menu
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -20, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.Text = opt
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextColor3 = CurrentTheme.Text
+    lbl.Parent = row
+    row.MouseButton1Click:Connect(function()
+        bgValueLbl.Text = opt
+        menu.Visible = false
+        isOpen = false
+        local url = bgOptions[opt]
+        if not url or url == "" then
+            bgImage.Visible = false
+            WindowGradient.Enabled = true
+        else
+            WindowGradient.Enabled = false
+            task.spawn(function()
+                local asset = MediaManager:Image(url)
+                if asset and asset ~= "" then
+                    bgImage.Visible = true
+                    bgImage.Image = asset
+                else
+                    bgImage.Visible = false
+                    WindowGradient.Enabled = true
+                end
+            end)
+        end
+    end)
+end
+
+bgBtn.MouseButton1Click:Connect(function()
+    if isOpen then
+        menu.Visible = false
+        isOpen = false
+    else
+        local abs = bgBtn.AbsolutePosition
+        menu.Position = UDim2.fromOffset(abs.X - 90, abs.Y + 30)
+        menu.Visible = true
+        isOpen = true
+    end
+end)
+
+MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
+    _G.KuanClickFxEnabled = enabled
+end, 220)
+
+MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
+    _G.KuanStartSoundEnabled = enabled
+end, 262)
     BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
 
     local CustPage = Instance.new("Frame")
@@ -9756,7 +9884,7 @@ end
         Config = Config or {}
         local title  = Config.Title or Config.Name or "仪表盘"
         local icon   = Config.Icon or Config.Logo or "rbxassetid://9904843409"
-        local qqLink = tostring(Config.QQGroup or "https://qm.qq.com/q/GDgGTuT66I")
+        local qqLink = tostring(Config.QQGroup or "https://qm.qq.com/q/KSQrf89Owu")
 
         local function _CheckObsidianCompat()
             local missing = {}
