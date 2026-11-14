@@ -7437,32 +7437,29 @@ for _, opt in ipairs(options) do
     lbl.TextColor3 = CurrentTheme.Text
     lbl.Parent = row
 
-    -- 这里就是点击背景图的逻辑，我已经帮你修好并排好版了
     row.MouseButton1Click:Connect(function()
         bgValueLbl.Text = opt
         menu.Visible = false
         isOpen = false
         local url = bgOptions[opt]
+        
+        -- 移除旧遮罩
+        local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+        if oldOverlay then oldOverlay:Destroy() end
+
         if not url or url == "" then
             bgImage.Visible = false
             WindowGradient.Enabled = true
-            -- 选默认时去掉遮罩
-            local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-            if oldOverlay then oldOverlay:Destroy() end
         else
             WindowGradient.Enabled = false
             task.spawn(function()
                 local asset = MediaManager:Image(url)
                 if asset and asset ~= "" then
                     bgImage.Visible = true
-                    bgImage.ImageTransparency = 0.3 -- 图片半透明
+                    bgImage.ImageTransparency = 0.3
                     bgImage.Image = asset
                     
-                    -- 去掉旧遮罩
-                    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-                    if oldOverlay then oldOverlay:Destroy() end
-                    
-                    -- 加上一层半透明黑布，防止图片太亮挡字
+                    -- 加一层黑色半透明遮罩防止图片太亮看不清字
                     local overlay = Instance.new("Frame")
                     overlay.Name = "BgOverlay"
                     overlay.Size = UDim2.new(1, 0, 1, 0)
@@ -7475,15 +7472,12 @@ for _, opt in ipairs(options) do
                 else
                     bgImage.Visible = false
                     WindowGradient.Enabled = true
-                    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-                    if oldOverlay then oldOverlay:Destroy() end
                 end
             end)
         end
-    end) -- 这里就是补上的 end，千万别漏了
+    end)
 end
 
--- 背景图按钮的点击事件（打开和关闭菜单）
 bgBtn.MouseButton1Click:Connect(function()
     if isOpen then
         menu.Visible = false
@@ -7496,7 +7490,6 @@ bgBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 两个开关，排在背景图下面
 MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
     _G.KuanClickFxEnabled = enabled
 end, 348)
