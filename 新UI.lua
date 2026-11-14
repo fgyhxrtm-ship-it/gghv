@@ -7351,8 +7351,8 @@ local bgImage = Instance.new("ImageLabel")
 bgImage.Name = "CustomBgImage"
 bgImage.Size = UDim2.new(1, 0, 1, 0)
 bgImage.BackgroundTransparency = 1
-bgImage.BorderSizePixel = -5
-bgImage.ZIndex = -5            -- 关键：改成负数，沉到最底
+bgImage.BorderSizePixel = 0
+bgImage.ZIndex = -10            -- 关键：改成负数，沉到最底
 bgImage.ScaleType = Enum.ScaleType.Crop -- 防止图片变形
 bgImage.Parent = MainFrame
 Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
@@ -7417,6 +7417,7 @@ list.Parent = menu
 
 local isOpen = false
 local options = {"默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景"}
+
 for _, opt in ipairs(options) do
     local row = Instance.new("TextButton")
     row.Size = UDim2.new(1, 0, 0, 30)
@@ -7435,48 +7436,54 @@ for _, opt in ipairs(options) do
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextColor3 = CurrentTheme.Text
     lbl.Parent = row
+
+    -- 这里就是点击背景图的逻辑，我已经帮你修好并排好版了
     row.MouseButton1Click:Connect(function()
-    bgValueLbl.Text = opt
-    menu.Visible = false
-    isOpen = false
-    local url = bgOptions[opt]
-    if not url or url == "" then
-    bgImage.Visible = false
-    WindowGradient.Enabled = true
-    -- 如果选了默认，就把遮罩也去掉
-    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-    if oldOverlay then oldOverlay:Destroy() end
-else
-    WindowGradient.Enabled = false
-    task.spawn(function()
-        local asset = MediaManager:Image(url)
-        if asset and asset ~= "" then
-            bgImage.Visible = true
-            bgImage.Image = asset
-            
-            -- 先去掉旧的遮罩
-            local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-            if oldOverlay then oldOverlay:Destroy() end
-            
-            -- 加上一层半透明黑布，防止图片太亮（比如你截图里的红色）挡住字
-            local overlay = Instance.new("Frame")
-            overlay.Name = "BgOverlay"
-            overlay.Size = UDim2.new(1, 0, 1, 0)
-            overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            overlay.BackgroundTransparency = 0.5 -- 如果觉得太暗，改成0.3
-            overlay.BorderSizePixel = 0
-            overlay.ZIndex = -4 -- 比背景图高一层，但在所有UI之下
-            overlay.Parent = MainFrame
-            Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, SapphireStyle.Radius)
-        else
+        bgValueLbl.Text = opt
+        menu.Visible = false
+        isOpen = false
+        local url = bgOptions[opt]
+        if not url or url == "" then
             bgImage.Visible = false
             WindowGradient.Enabled = true
+            -- 选默认时去掉遮罩
             local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
             if oldOverlay then oldOverlay:Destroy() end
+        else
+            WindowGradient.Enabled = false
+            task.spawn(function()
+                local asset = MediaManager:Image(url)
+                if asset and asset ~= "" then
+                    bgImage.Visible = true
+                    bgImage.ImageTransparency = 0.3 -- 图片半透明
+                    bgImage.Image = asset
+                    
+                    -- 去掉旧遮罩
+                    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+                    if oldOverlay then oldOverlay:Destroy() end
+                    
+                    -- 加上一层半透明黑布，防止图片太亮挡字
+                    local overlay = Instance.new("Frame")
+                    overlay.Name = "BgOverlay"
+                    overlay.Size = UDim2.new(1, 0, 1, 0)
+                    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                    overlay.BackgroundTransparency = 0.5
+                    overlay.BorderSizePixel = 0
+                    overlay.ZIndex = -4
+                    overlay.Parent = MainFrame
+                    Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, SapphireStyle.Radius)
+                else
+                    bgImage.Visible = false
+                    WindowGradient.Enabled = true
+                    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+                    if oldOverlay then oldOverlay:Destroy() end
+                end
+            end)
         end
-    end)
+    end) -- 这里就是补上的 end，千万别漏了
 end
 
+-- 背景图按钮的点击事件（打开和关闭菜单）
 bgBtn.MouseButton1Click:Connect(function()
     if isOpen then
         menu.Visible = false
@@ -7489,7 +7496,7 @@ bgBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 2. 两个开关，排在背景图下面
+-- 两个开关，排在背景图下面
 MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
     _G.KuanClickFxEnabled = enabled
 end, 348)
