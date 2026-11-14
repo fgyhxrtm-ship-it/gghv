@@ -9316,7 +9316,7 @@ end
         local cardName  = cfg.Name or cfg.Title or "卡片"
         local cardDesc  = cfg.Desc or cfg.Description or cfg.SubName or ""
         local cardIcon  = cfg.Icon or cfg.Logo or 127194456372995
-        local cardImage = cfg.Image or cfg.Banner
+        local cardImage = cfg.Image or cfg.Banner or "rbxassetid://135781374174090"
 
         local cardFrame = Instance.new("Frame")
         cardFrame.Name = "HomeCard"
@@ -9913,34 +9913,9 @@ end
         end
 
         local HomeFonts = {}
-        do
-            local function tryLoad(relPath, weight, style)
-                if type(getcustomasset) ~= "function" then return nil end
-                if type(isfile) == "function" then
-                    local ok, exists = pcall(isfile, relPath)
-                    if not ok or not exists then return nil end
-                end
-                local ok, asset = pcall(getcustomasset, relPath)
-                if not ok or not asset or asset == "" then return nil end
-                local ok2, font = pcall(Font.new, asset, weight or Enum.FontWeight.Regular, style or Enum.FontStyle.Normal)
-                return ok2 and font or nil
-            end
-
-            HomeFonts.eyebrow = tryLoad("BasedHub/fonts/Archivo-ExpandedBold.ttf",
-                Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-            HomeFonts.title = tryLoad("BasedHub/fonts/InstrumentSerif-Italic.ttf",
-                Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-            HomeFonts.body = tryLoad("BasedHub/fonts/Inter-Regular.ttf",
-                Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-
-            if not HomeFonts.eyebrow then HomeFonts.eyebrow = Font.fromEnum(Enum.Font.GothamBold) end
-            if not HomeFonts.title then
-                local ok, f = pcall(function()
-                    return Font.fromName("Merriweather", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-                end)
-                HomeFonts.title = ok and f or Font.fromEnum(Enum.Font.GothamBold)
-            end
-            if not HomeFonts.body then HomeFonts.body = Font.fromEnum(Enum.Font.Gotham) end
+HomeFonts.eyebrow = Font.fromEnum(Enum.Font.GothamBold)
+HomeFonts.title   = Font.fromEnum(Enum.Font.GothamBold)
+HomeFonts.body    = Font.fromEnum(Enum.Font.Gotham)
         end
 
         local Root = Instance.new("Frame")
