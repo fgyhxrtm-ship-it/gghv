@@ -7348,10 +7348,14 @@ if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
 if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
 
 local bgImage = Instance.new("ImageLabel")
+bgImage.Name = "CustomBgImage"
 bgImage.Size = UDim2.new(1, 0, 1, 0)
 bgImage.BackgroundTransparency = 1
-bgImage.ZIndex = 0
+bgImage.BorderSizePixel = -5
+bgImage.ZIndex = -5            -- 关键：改成负数，沉到最底
+bgImage.ScaleType = Enum.ScaleType.Crop -- 防止图片变形
 bgImage.Parent = MainFrame
+Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
 Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
 
 local bgOptions = {
@@ -7432,25 +7436,43 @@ for _, opt in ipairs(options) do
     lbl.TextColor3 = CurrentTheme.Text
     lbl.Parent = row
     row.MouseButton1Click:Connect(function()
-        bgValueLbl.Text = opt
-        menu.Visible = false
-        isOpen = false
-        local url = bgOptions[opt]
-        if not url or url == "" then
+    bgValueLbl.Text = opt
+    menu.Visible = false
+    isOpen = false
+    local url = bgOptions[opt]
+    if not url or url == "" then
+    bgImage.Visible = false
+    WindowGradient.Enabled = true
+    -- 如果选了默认，就把遮罩也去掉
+    local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+    if oldOverlay then oldOverlay:Destroy() end
+else
+    WindowGradient.Enabled = false
+    task.spawn(function()
+        local asset = MediaManager:Image(url)
+        if asset and asset ~= "" then
+            bgImage.Visible = true
+            bgImage.Image = asset
+            
+            -- 先去掉旧的遮罩
+            local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+            if oldOverlay then oldOverlay:Destroy() end
+            
+            -- 加上一层半透明黑布，防止图片太亮（比如你截图里的红色）挡住字
+            local overlay = Instance.new("Frame")
+            overlay.Name = "BgOverlay"
+            overlay.Size = UDim2.new(1, 0, 1, 0)
+            overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            overlay.BackgroundTransparency = 0.5 -- 如果觉得太暗，改成0.3
+            overlay.BorderSizePixel = 0
+            overlay.ZIndex = -4 -- 比背景图高一层，但在所有UI之下
+            overlay.Parent = MainFrame
+            Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, SapphireStyle.Radius)
+        else
             bgImage.Visible = false
             WindowGradient.Enabled = true
-        else
-            WindowGradient.Enabled = false
-            task.spawn(function()
-                local asset = MediaManager:Image(url)
-                if asset and asset ~= "" then
-                    bgImage.Visible = true
-                    bgImage.Image = asset
-                else
-                    bgImage.Visible = false
-                    WindowGradient.Enabled = true
-                end
-            end)
+            local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
+            if oldOverlay then oldOverlay:Destroy() end
         end
     end)
 end
