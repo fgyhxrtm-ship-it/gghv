@@ -7345,6 +7345,10 @@ end)
     end, 132)
 
     BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
+    BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
+-- ==========================================
+-- 移植：背景图、点击贴图、启动音效
+-- ==========================================
 if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
 if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
 
@@ -7362,7 +7366,7 @@ local bgOptions = {
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
--- 统一用 UIListLayout 排版，绝对不会重叠
+-- 自动排在“边框风格”下面
 local bgRow = Instance.new("Frame")
 bgRow.Size = UDim2.new(1, -24, 0, 42)
 bgRow.BackgroundTransparency = 1
@@ -7474,7 +7478,6 @@ end)
 MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
     _G.KuanStartSoundEnabled = enabled
 end)
-    BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
 
     local CustPage = Instance.new("Frame")
     CustPage.Size = UDim2.new(1, -151, 1, 0)
