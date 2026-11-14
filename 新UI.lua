@@ -9963,7 +9963,7 @@ end
         Banner.Name = "Still"
         Banner.BackgroundTransparency = 1
         Banner.BorderSizePixel = 0
-        Banner.Image = "rbxassetid://135781374174090"
+        Banner.Image = "rbxassetid://83701039519151"
         Banner.ScaleType = Enum.ScaleType.Crop
         Banner.Size = UDim2.new(0.62, 0, 1, -40)
         Banner.Position = UDim2.fromScale(1, 0)
@@ -10088,7 +10088,7 @@ end
         HeroSub.BorderSizePixel = 0
         HeroSub.FontFace = HomeFonts.body
         HeroSub.TextSize = 13
-        HeroSub.Text = "好人当不成，那就不要给自己施加压力。放松放松吧..."
+        HeroSub.Text = "回不去的何止是时间"
         HeroSub.TextColor3 = CurrentTheme.Text
         HeroSub.TextTransparency = 0.25
         HeroSub.TextXAlignment = Enum.TextXAlignment.Left
