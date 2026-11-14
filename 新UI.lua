@@ -7362,11 +7362,11 @@ local bgOptions = {
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
-local bgFrame = Instance.new("Frame")
-bgFrame.Size = UDim2.new(1, -24, 0, 42)
-bgFrame.Position = UDim2.new(0, 12, 0, 174)
-bgFrame.BackgroundTransparency = 1
-bgFrame.Parent = SettingsScroll
+-- 统一用 UIListLayout 排版，绝对不会重叠
+local bgRow = Instance.new("Frame")
+bgRow.Size = UDim2.new(1, -24, 0, 42)
+bgRow.BackgroundTransparency = 1
+bgRow.Parent = SettingsScroll
 
 local bgLabel = Instance.new("TextLabel")
 bgLabel.Size = UDim2.new(1, -130, 0, 18)
@@ -7377,7 +7377,7 @@ bgLabel.Text = "切换背景图"
 bgLabel.TextSize = 13
 bgLabel.TextXAlignment = Enum.TextXAlignment.Left
 bgLabel.TextColor3 = CurrentTheme.Text
-bgLabel.Parent = bgFrame
+bgLabel.Parent = bgRow
 
 local bgBtn = Instance.new("TextButton")
 bgBtn.Size = UDim2.new(0, 100, 0, 26)
@@ -7386,7 +7386,7 @@ bgBtn.AnchorPoint = Vector2.new(1, 0.5)
 bgBtn.BackgroundColor3 = Color3.fromRGB(26, 28, 36)
 bgBtn.Text = ""
 bgBtn.AutoButtonColor = false
-bgBtn.Parent = bgFrame
+bgBtn.Parent = bgRow
 Instance.new("UICorner", bgBtn).CornerRadius = UDim.new(0, 5)
 
 local bgValueLbl = Instance.new("TextLabel")
@@ -7469,11 +7469,11 @@ end)
 
 MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
     _G.KuanClickFxEnabled = enabled
-end, 220)
+end)
 
 MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
     _G.KuanStartSoundEnabled = enabled
-end, 262)
+end)
     BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
 
     local CustPage = Instance.new("Frame")
