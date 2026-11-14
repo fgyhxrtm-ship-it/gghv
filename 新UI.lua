@@ -7338,8 +7338,11 @@ end)
     MakeToggle(SettingsScroll, "自定义光标", false, function(enabled)
         FengUI:SetCustomCursor(enabled)
     end, 90)
--- ==========================================
--- 背景图、点击贴图、启动音效
+
+    BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
+    BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
+    -- ==========================================
+-- 终极设置面板排版接管
 -- ==========================================
 if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
 if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
@@ -7358,10 +7361,10 @@ local bgOptions = {
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
--- 放在 132 的位置
+-- 1. 背景图下拉框，放在原有设置的最下面 (Y=306)
 local bgFrame = Instance.new("Frame")
 bgFrame.Size = UDim2.new(1, -24, 0, 42)
-bgFrame.Position = UDim2.new(0, 12, 0, 132)
+bgFrame.Position = UDim2.new(0, 12, 0, 306)
 bgFrame.BackgroundTransparency = 1
 bgFrame.Parent = SettingsScroll
 
@@ -7464,17 +7467,14 @@ bgBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 这两个开关占 174 和 216 的位置
-MakeToggle(SettingsScroll,"点击屏幕贴图",_G.KuanClickFxEnabled,function(v)_G.KuanClickFxEnabled=v end,174)
-MakeToggle(SettingsScroll,"启动音效",_G.KuanStartSoundEnabled,function(v)_G.KuanStartSoundEnabled=v end,216)
+-- 2. 两个开关，排在背景图下面
+MakeToggle(SettingsScroll, "点击屏幕贴图", _G.KuanClickFxEnabled, function(enabled)
+    _G.KuanClickFxEnabled = enabled
+end, 348)
 
-    MakeToggle(SettingsScroll, "紧凑侧栏", false, function(enabled)
-        CompactSidebarState.Value = enabled
-        if ApplyCompactSidebar then ApplyCompactSidebar(enabled, false) end
-    end, 216)
-
-    BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
-    BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
+MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
+    _G.KuanStartSoundEnabled = enabled
+end, 390)
 
     local CustPage = Instance.new("Frame")
     CustPage.Size = UDim2.new(1, -151, 1, 0)
