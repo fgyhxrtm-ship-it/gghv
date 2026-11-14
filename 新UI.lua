@@ -7358,7 +7358,7 @@ local bgOptions = {
     ["默认背景"]     = "",
     ["猫羽雫背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/super-duper-octo-spork/refs/heads/main/mmexport1792866121556.webp",
     ["约翰多背景"]   = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/super-duper-octo-spork/refs/heads/main/image_download_1792867023409.jpg",
-    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/super-duper-octo-spork/refs/heads/main/mmexport1792866121556.webp",
+    ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/super-duper-octo-spork/refs/heads/main/image_download_1792866652682%20(1).jpg",
 }
 
 -- 1. 背景图下拉框，放在原有设置的最下面 (Y=306)
