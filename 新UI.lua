@@ -9912,10 +9912,12 @@ end
             end)
         end
 
-        local HomeFonts = {}
-HomeFonts.eyebrow = Font.fromEnum(Enum.Font.GothamBold)
-HomeFonts.title   = Font.fromEnum(Enum.Font.GothamBold)
-HomeFonts.body    = Font.fromEnum(Enum.Font.Gotham)
+local HomeFonts = {}
+do
+    HomeFonts.eyebrow = Font.fromEnum(Enum.Font.GothamBold)
+    HomeFonts.title   = Font.fromEnum(Enum.Font.GothamBold)
+    HomeFonts.body    = Font.fromEnum(Enum.Font.Gotham)
+end
         
         local Root = Instance.new("Frame")
         Root.Name = "HomeDashboard"
