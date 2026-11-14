@@ -7341,21 +7341,17 @@ end)
 
     BuildColorPresetDropdown(SettingsScroll, SettingsPage, MainFrame, WindowGradient)
     BuildFrameStyleDropdown(SettingsScroll, SettingsPage, MainFrame)
-    -- ==========================================
--- 终极设置面板排版接管
+-- ==========================================
+-- 终极设置面板排版接管 (恢复原版)
 -- ==========================================
 if not _G.KuanClickFxEnabled then _G.KuanClickFxEnabled = true end
 if not _G.KuanStartSoundEnabled then _G.KuanStartSoundEnabled = true end
 
 local bgImage = Instance.new("ImageLabel")
-bgImage.Name = "CustomBgImage"
 bgImage.Size = UDim2.new(1, 0, 1, 0)
 bgImage.BackgroundTransparency = 1
-bgImage.BorderSizePixel = 0
-bgImage.ZIndex = -10            -- 关键：改成负数，沉到最底
-bgImage.ScaleType = Enum.ScaleType.Crop -- 防止图片变形
+bgImage.ZIndex = 0 -- 恢复原版的层级
 bgImage.Parent = MainFrame
-Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
 Instance.new("UICorner", bgImage).CornerRadius = UDim.new(0, SapphireStyle.Radius)
 
 local bgOptions = {
@@ -7365,7 +7361,6 @@ local bgOptions = {
     ["忧郁背景"]     = "https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/image_download_1792866652682.jpg",
 }
 
--- 1. 背景图下拉框，放在原有设置的最下面 (Y=306)
 local bgFrame = Instance.new("Frame")
 bgFrame.Size = UDim2.new(1, -24, 0, 42)
 bgFrame.Position = UDim2.new(0, 12, 0, 306)
@@ -7417,7 +7412,6 @@ list.Parent = menu
 
 local isOpen = false
 local options = {"默认背景", "猫羽雫背景", "约翰多背景", "忧郁背景"}
-
 for _, opt in ipairs(options) do
     local row = Instance.new("TextButton")
     row.Size = UDim2.new(1, 0, 0, 30)
@@ -7436,17 +7430,11 @@ for _, opt in ipairs(options) do
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextColor3 = CurrentTheme.Text
     lbl.Parent = row
-
     row.MouseButton1Click:Connect(function()
         bgValueLbl.Text = opt
         menu.Visible = false
         isOpen = false
         local url = bgOptions[opt]
-        
-        -- 移除旧遮罩
-        local oldOverlay = MainFrame:FindFirstChild("BgOverlay")
-        if oldOverlay then oldOverlay:Destroy() end
-
         if not url or url == "" then
             bgImage.Visible = false
             WindowGradient.Enabled = true
@@ -7456,19 +7444,7 @@ for _, opt in ipairs(options) do
                 local asset = MediaManager:Image(url)
                 if asset and asset ~= "" then
                     bgImage.Visible = true
-                    bgImage.ImageTransparency = 0.3
                     bgImage.Image = asset
-                    
-                    -- 加一层黑色半透明遮罩防止图片太亮看不清字
-                    local overlay = Instance.new("Frame")
-                    overlay.Name = "BgOverlay"
-                    overlay.Size = UDim2.new(1, 0, 1, 0)
-                    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                    overlay.BackgroundTransparency = 0.5
-                    overlay.BorderSizePixel = 0
-                    overlay.ZIndex = -4
-                    overlay.Parent = MainFrame
-                    Instance.new("UICorner", overlay).CornerRadius = UDim.new(0, SapphireStyle.Radius)
                 else
                     bgImage.Visible = false
                     WindowGradient.Enabled = true
@@ -7497,7 +7473,6 @@ end, 348)
 MakeToggle(SettingsScroll, "启动音效", _G.KuanStartSoundEnabled, function(enabled)
     _G.KuanStartSoundEnabled = enabled
 end, 390)
-
     local CustPage = Instance.new("Frame")
     CustPage.Size = UDim2.new(1, -151, 1, 0)
     CustPage.Position = UDim2.new(0, 151, 0, 0)
