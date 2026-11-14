@@ -6438,7 +6438,7 @@ end)
         if Config.Duration == nil then Config.Duration = 5 end
 
         local IconSource = Config.Icon or Config.Logo
-        local IconId = formatIconAsset(IconSource, "rbxassetid://84830962019412")
+        local IconId = formatIconAsset(IconSource, "rbxassetid://83701039519151")
         local IsImageIcon = IconId ~= ""
 
         local ContainerFrame = Instance.new("Frame")
@@ -6698,7 +6698,7 @@ end)
     LogoImage.Position    = UDim2.new(0, 10, 0.5, 0)
     LogoImage.Size        = UDim2.new(0, 35, 0, 35)
     LogoImage.BackgroundTransparency = 1
-    LogoImage.Image = formatIconAsset(IconAsset, "rbxassetid://84830962019412")
+    LogoImage.Image = formatIconAsset(IconAsset, "rbxassetid://83701039519151")
     LogoImage.Parent = HeadFrame
     AddToRegistry(LogoImage, "ImageColor3", "Text")
     Instance.new("UICorner", LogoImage).CornerRadius = UDim.new(0, 7)
@@ -6902,7 +6902,7 @@ end)
     SidebarTitleIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
     SidebarTitleIcon.AnchorPoint = Vector2.new(0.5, 0.5)
     SidebarTitleIcon.BackgroundTransparency = 1
-    SidebarTitleIcon.Image = "rbxassetid://84830962019412"
+    SidebarTitleIcon.Image = "rbxassetid://83701039519151"
     SidebarTitleIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
     SidebarTitleIcon.ZIndex = 103
     SidebarTitleIcon.Parent = SidebarTitleIconFrame
@@ -8753,7 +8753,7 @@ do
     IconImage.Position               = UDim2.fromScale(0.5, 0.5)
     IconImage.Size                   = UDim2.fromScale(1, 1)
     IconImage.ZIndex                 = 901
-    IconImage.Image                  = "rbxassetid://84830962019412"
+    IconImage.Image                  = "rbxassetid://83701039519151"
     IconImage.ImageColor3            = Color3.fromRGB(255, 255, 255)
     IconImage.ImageTransparency      = 1
     IconImage.ScaleType              = Enum.ScaleType.Stretch
@@ -9963,7 +9963,7 @@ end
         Banner.Name = "Still"
         Banner.BackgroundTransparency = 1
         Banner.BorderSizePixel = 0
-        Banner.Image = "rbxassetid://83701039519151"
+        Banner.Image = "rbxassetid://97731320907358"
         Banner.ScaleType = Enum.ScaleType.Crop
         Banner.Size = UDim2.new(0.62, 0, 1, -40)
         Banner.Position = UDim2.fromScale(1, 0)
