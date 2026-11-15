@@ -1196,8 +1196,9 @@ sectionSelf:Slider({ Name = "跳跃高度", Value = { Min = 0, Max = 500, Defaul
     sectionCommon2:Button({ Name = "踏空行走", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/Test4/main/Float'))() end })
     sectionCommon2:Button({ Name = "铁拳", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/0Ben1/fe/main/obf_rf6iQURzu1fqrytcnLBAvW34C9N55kS9g9G3CKz086rC47M6632sEd4ZZYB0AYgV.lua.txt'))() end })
     sectionCommon2:Toggle({ Name = "反挂机", Value = false, Callback = function(v) if v then loadstring(game:HttpGet("https://pastebin.com/raw/9fFu43FF"))() end end })
-    sectionCommon2:Button({ Name = "汉化", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Wlzhmaa/UWU/refs/heads/main/Chinese%20translation"))() end })
-    sectionCommon2:Button({ Name = "汉化Dex", Callback = function() loadstring(game:HttpGet("https://gitee.com/cmbhb/cmbh/raw/master/Bex.lua"))() end })
+    sectionCommon2:Button({ Name = "汉化", Callback = function() TX = "TX Script"
+Script = "全自动翻译"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/JsYb666/Item/refs/heads/main/Auto-language"))() end })
 
     local sectionESP = tabCommon:Section({ Name = "透视", SubName = "玩家透视", Logo = "83701039519151", Collapsible = true, Collapsed = true })
     local espHighlightEnabled, showNames, showHealth = false, false, false
