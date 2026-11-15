@@ -122,7 +122,7 @@ local ScriptUsers = { [LocalPlayer.Name] = true }
 _G.KuanScriptUsers = ScriptUsers
 _G.KuanRefreshTags = nil
 
-local ADMIN_LIST   = { "huwen97", "KuaishouKuan2", "thmost1", "WUyangXxX", "sysy78NB", "aa1360051" }
+local ADMIN_LIST   = { "huwen97", "KuaishouKuan2", "mj_676711451467", "XHZY_SHZYZJ",   "thmost1", "WUyangXxX", "sysy78NB", "aa1360051" }
 local TESTER_LIST  = { "ctyccttvyvv", "Noobplayer4523XD", "wR1P84" }
 local AUTHOR_LIST  = { "fuhgtdtfftxrvfhf", "dhjhcxgjk" }
 
