@@ -159,8 +159,10 @@ local function canSeeTag(myName, targetName)
 end
 
 local activeTags = {}
+local showHeadTagEnabled = true
 
 local function createTag(player)
+    if not showHeadTagEnabled then return end
     if not player or not player.Character then return end
     if not canSeeTag(LocalPlayer.Name, player.Name) then return end
     if activeTags[player] then return end
@@ -1065,6 +1067,7 @@ local function StartMain()
  local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
 local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关", Logo = "83701039519151", Collapsible = true, Collapsed = true })
 sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = function(v)
+    showHeadTagEnabled = v
     if v then
         refreshAllTags()
     else
