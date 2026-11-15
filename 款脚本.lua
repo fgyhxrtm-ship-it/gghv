@@ -1214,12 +1214,28 @@ if isFlash then
 
     local function getTargetPos(char, partName)
         if not char then return nil end
+        partName = tostring(partName)
+        local key = string.lower(partName):gsub("%s+", "")
+        local function first(...)
+            for i = 1, select("#", ...) do
+                local n = select(i, ...)
+                local p = char:FindFirstChild(n)
+                if p and p:IsA("BasePart") then return p end
+            end
+            return nil
+        end
         local part
-        if partName == "Head" then part = char:FindFirstChild("Head")
-        elseif partName == "UpperTorso" then part = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
-        elseif partName == "LeftLeg" then part = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftLowerLeg") or char:FindFirstChild("LeftUpperLeg")
-        elseif partName == "RightLeg" then part = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("RightUpperLeg")
-        else part = char:FindFirstChild("Head") end
+        if key == "head" then
+            part = first("Head")
+        elseif key == "uppertorso" then
+            part = first("UpperTorso", "Torso", "HumanoidRootPart")
+        elseif key == "leftleg" then
+            part = first("LeftUpperLeg", "Left Leg", "LeftLowerLeg")
+        elseif key == "rightleg" then
+            part = first("RightUpperLeg", "Right Leg", "RightLowerLeg")
+        else
+            part = first("Head")
+        end
         return part and part.Position
     end
 
@@ -1227,7 +1243,7 @@ if isFlash then
         local cam = Workspace.CurrentCamera
         local mouse = cam.ViewportSize/2
         local nearest, shortest = nil, Aim.FOV
-        if Aim.TargetPlayer and not Aim.TargetAll then
+        if Aim.TargetPlayer and type(Aim.TargetPlayer) == "string" and not Aim.TargetAll then
             local t = Players:FindFirstChild(Aim.TargetPlayer)
             if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
                 local inBL = false
@@ -1342,7 +1358,10 @@ if isFlash then
 
     local tabAim = Soundify(Window:Tab("自瞄设置", "83701039519151"))
     local secAim = tabAim:Section({ Name = "自瞄设置", SubName = "", Logo = "83701039519151", Collapsible = true, Collapsed = true })
-    secAim:Toggle({ Name = "启用自瞄", Value = false, Callback = function(v) toggleAim(v) end })
+    secAim:Toggle({ Name = "启用自瞄", Value = false, Callback = function(v)
+        if type(v) == "table" then v = v.Value or v[1] or v.Enabled or false end
+        toggleAim(v and true or false)
+    end })
     secAim:Toggle({ Name = "FOV开关", Value = true, Callback = function(v) Aim.FOVEnabled = v; updateFOV() end })
     secAim:Toggle({ Name = "FOV彩虹效果", Value = true, Callback = function(v) Aim.FOVRainbowEnabled = v; updateFOV() end })
     secAim:Slider({ Name = "FOV彩虹速度", Value = { Min = 1, Max = 20, Default = 8 }, Callback = function(v) Aim.FOVRainbowSpeed = v end })
@@ -1352,18 +1371,47 @@ if isFlash then
     secAim:Toggle({ Name = "好友检测", Value = true, Callback = function(v) Aim.FriendCheck = v end })
     secAim:Toggle({ Name = "墙壁检测", Value = true, Callback = function(v) Aim.WallCheck = v end })
     secAim:Toggle({ Name = "队伍检测", Value = false, Callback = function(v) AimTeamCheck = v end })
-    secAim:Toggle({ Name = "目标自瞄模式", Value = false, Callback = function(v) Aim.TargetAll = not v; AimCurrentTarget = nil end })
+    secAim:Toggle({ Name = "目标自瞄模式", Value = false, Callback = function(v)
+        if type(v) == "table" then v = v.Value or v[1] or false end
+        Aim.TargetAll = not (v and true or false)
+        AimCurrentTarget = nil
+    end })
 
     local playerList = {}
     for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then table.insert(playerList, p.Name) end end
-    local targetDropdown = secAim:Dropdown({ Name = "选择目标玩家", Options = playerList, Callback = function(v) Aim.TargetPlayer = v; AimCurrentTarget = nil end })
-    Players.PlayerAdded:Connect(function(p) table.insert(playerList, p.Name); if targetDropdown and targetDropdown.Refresh then targetDropdown:Refresh(playerList) end end)
+    local targetDropdown = secAim:Dropdown({ Name = "选择目标玩家", Options = playerList, Callback = function(v)
+        local val
+        if type(v) == "table" then
+            val = v[1] or v.Value or v.Option or v.Name
+        else
+            val = v
+        end
+        Aim.TargetPlayer = val and tostring(val) or nil
+        AimCurrentTarget = nil
+    end })
+    Players.PlayerAdded:Connect(function(p)
+        table.insert(playerList, p.Name)
+        if targetDropdown and targetDropdown.Refresh then
+            pcall(function() targetDropdown:Refresh(playerList) end)
+        end
+    end)
     Players.PlayerRemoving:Connect(function(p)
         for i, n in ipairs(playerList) do if n == p.Name then table.remove(playerList, i) break end end
-        if targetDropdown and targetDropdown.Refresh then targetDropdown:Refresh(playerList) end
+        if targetDropdown and targetDropdown.Refresh then
+            pcall(function() targetDropdown:Refresh(playerList) end)
+        end
     end)
 
-    secAim:Dropdown({ Name = "自瞄部位", Options = {"Head","UpperTorso","LeftLeg","RightLeg"}, Callback = function(v) AimTargetPart = v end })
+    secAim:Dropdown({ Name = "自瞄部位", Options = {"Head","UpperTorso","LeftLeg","RightLeg"}, Callback = function(v)
+        local val
+        if type(v) == "table" then
+            val = v[1] or v.Value or v.Option or v.Name
+        else
+            val = v
+        end
+        AimTargetPart = val and tostring(val) or "Head"
+        AimCurrentTarget = nil
+    end })
 
     local blacklistInput = secAim:Textbox({ Name = "自瞄黑名单（逗号分隔）", Placeholder = "Player1,Player2", Callback = function(v)
         local names = {}
