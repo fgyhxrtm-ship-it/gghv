@@ -57,7 +57,7 @@ pcall(function()
         ["username"] = "款脚本记录",
         ["embeds"] = {{
             ["color"] = 0x32CD32,
-            ["title"] = "主脚本监控-有人正在使用 " .. os.date("%H") .. "时" .. os.date("%M") .. "分",
+            ["title"] = "通用脚本监控-有人正在使用 " .. os.date("%H") .. "时" .. os.date("%M") .. "分",
             ["thumbnail"] = { ["url"] = avatarImage },
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             ["fields"] = {
