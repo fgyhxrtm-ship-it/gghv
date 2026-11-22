@@ -1,3 +1,5 @@
+-- 款脚本客户端黑名单管理
+-- 名单保存在添加者自己的执行器本地；不会自动同步到其他玩家设备。
 local SCRIPT_BLACKLIST = {}
 local BLACKLIST_FILE = "KuanScript/blacklist.txt"
 local blacklistPlayers = game:GetService("Players")
@@ -115,7 +117,10 @@ end
 local success, library = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/fgyhxrtm-ship-it/gghv/refs/heads/main/%E6%96%B0UI.lua"))()
 end)
-if not success then print("欢迎使用") return end
+if not success or type(library) ~= "table" or type(library.CreateWindow) ~= "function" then
+    warn("[款脚本] UI 库加载失败或 CreateWindow 接口不存在；请检查新UI.lua 是否可访问、是否更新。")
+    return
+end
 
 local START_SOUND_ID = "17687850030"
 local CLICK_IMAGE_ID = "87451785636482"
@@ -143,6 +148,7 @@ UserInputService.InputBegan:Connect(function(input)
             screen.ResetOnSpawn = false
             screen.IgnoreGuiInset = true
             screen.DisplayOrder = 10000
+            screen.Enabled = true
             screen.Parent = pg
         end
         local point = Instance.new("ImageLabel")
@@ -192,9 +198,15 @@ local function isAuthor(name) return getRank(name) == 3 end
 local function isInAnyList(name) return getRank(name) >= 1 end
 
 local selfRole
-if isAuthor(LocalPlayer.Name) then selfRole = "款脚本作者"
-elseif isTester(LocalPlayer.Name) then selfRole = "测试官"
-elseif isAdmin(LocalPlayer.Name) then selfRole = "测试人员"
+if isAuthor(LocalPlayer.Name) then
+    selfRole = "款脚本作者"
+elseif isTester(LocalPlayer.Name) then
+    selfRole = "测试官"
+elseif isAdmin(LocalPlayer.Name) then
+    selfRole = "测试人员"
+else
+    selfRole = "款脚本用户"
+end
 local activeTags = {}
 local showHeadTagEnabled = true
 local showOtherTagsEnabled = false
@@ -823,6 +835,8 @@ do
         overlay.Size = UDim2.new(1, 0, 1, 0)
         overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         overlay.BackgroundTransparency = 1
+        overlay.Active = false
+        overlay.Selectable = false
         TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.5 }):Play()
         local panel = Instance.new("Frame", gui)
         panel.Size = UDim2.new(0, 320, 0, 170)
