@@ -1,3 +1,43 @@
+local SCRIPT_BLACKLIST = {}
+local BLACKLIST_FILE = "KuanScript/blacklist.txt"
+local blacklistPlayers = game:GetService("Players")
+local blacklistLocalPlayer = blacklistPlayers.LocalPlayer
+
+local function loadScriptBlacklist()
+    pcall(function()
+        if isfile and readfile and isfile(BLACKLIST_FILE) then
+            local data = readfile(BLACKLIST_FILE)
+            for line in tostring(data):gmatch("[^\r\n]+") do
+                local name = line:gsub("^%s+", ""):gsub("%s+$", "")
+                if name ~= "" then table.insert(SCRIPT_BLACKLIST, name) end
+            end
+        end
+    end)
+end
+
+local function saveScriptBlacklist()
+    if not writefile then return false end
+    local ok = pcall(function()
+        if isfolder and makefolder and not isfolder("KuanScript") then makefolder("KuanScript") end
+        writefile(BLACKLIST_FILE, table.concat(SCRIPT_BLACKLIST, "\n"))
+    end)
+    return ok
+end
+
+local function isScriptBlacklisted(name)
+    local wanted = string.lower(tostring(name or ""))
+    for _, blockedName in ipairs(SCRIPT_BLACKLIST) do
+        if string.lower(blockedName) == wanted then return true end
+    end
+    return false
+end
+
+loadScriptBlacklist()
+if isScriptBlacklisted(blacklistLocalPlayer.Name) then
+    blacklistLocalPlayer:Kick("你已被加入款脚本黑名单，脚本已停止运行。")
+    return
+end
+
 local function KuanMonitor()
     if _G.KuanMonitorEnabled == false then return end
     pcall(function()
@@ -106,6 +146,9 @@ UserInputService.InputBegan:Connect(function(input)
             screen.Parent = pg
         end
         local point = Instance.new("ImageLabel")
+        -- 点击特效只负责显示，不参与命中测试，避免挡住下方按钮/下拉选项
+        point.Active = false
+        point.Selectable = false
         point.Size = UDim2.new(0, 30, 0, 30)
         point.AnchorPoint = Vector2.new(0.5, 0.5)
         point.Position = UDim2.new(0, input.Position.X, 0, input.Position.Y)
@@ -152,21 +195,38 @@ local selfRole
 if isAuthor(LocalPlayer.Name) then selfRole = "款脚本作者"
 elseif isTester(LocalPlayer.Name) then selfRole = "测试官"
 elseif isAdmin(LocalPlayer.Name) then selfRole = "测试人员"
-else selfRole = "款脚本用户" end
-local function canSeeTag(myName, targetName)
-    local myRank = getRank(myName)
-    local targetRank = getRank(targetName)
-    if myRank == 0 then return targetName == myName end
-    return targetRank >= 1
-end
-
 local activeTags = {}
 local showHeadTagEnabled = true
+local showOtherTagsEnabled = false
+local allowLowRankTagsEnabled = false
+local restrictLowRankTagEffects = false -- 仅限制本地看到的低等级头衔特效
+local tagBackgroundEnabled = false -- 默认关闭头衔背景图片
+local tagShimmerEnabled = true
+local tagVerticalShakeEnabled = false
+local tagHorizontalShakeEnabled = false
+
+-- 纯客户端只能读取游戏服务器已复制给客户端的标记。
+-- 只有服务器明确将目标玩家标记为 KuanScriptActive=true，才视为已启动款脚本。
+-- 同时要求目标等级严格低于本地玩家；未标记、同级或更高级玩家均不显示。
+local function canSeeTag(myPlayer, targetPlayer)
+    if not myPlayer or not targetPlayer then return false end
+    if targetPlayer == myPlayer then return true end
+    if not showOtherTagsEnabled then return false end
+    if getRank(myPlayer.Name) < 1 then return false end
+    if getRank(targetPlayer.Name) >= getRank(myPlayer.Name) then return false end
+
+    local activeOk, isScriptActive = pcall(function()
+        return targetPlayer:GetAttribute("KuanScriptActive")
+    end)
+    if not activeOk or isScriptActive ~= true then return false end
+
+    return true
+end
 
 local function createTag(player)
     if not showHeadTagEnabled then return end
     if not player or not player.Character then return end
-    if not canSeeTag(LocalPlayer.Name, player.Name) then return end
+    if not canSeeTag(LocalPlayer, player) then return end
     if activeTags[player] then return end
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
@@ -194,8 +254,39 @@ local function createTag(player)
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = bg
 
-    local gradStart = Color3.fromRGB(0, 220, 255)
-    local gradEnd   = Color3.fromRGB(200, 0, 255)
+    -- 头衔框专用背景图：只限制在原有 185x52 头衔框内，不覆盖主界面
+    local tagBackgroundImage = Instance.new("ImageLabel")
+    tagBackgroundImage.Name = "TagBackgroundImage"
+    tagBackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+    tagBackgroundImage.Position = UDim2.new(0, 0, 0, 0)
+    tagBackgroundImage.BackgroundTransparency = 1
+    tagBackgroundImage.BorderSizePixel = 0
+    tagBackgroundImage.Image = "rbxassetid://76786845799745"
+    tagBackgroundImage.ImageTransparency = 0.10
+    tagBackgroundImage.ScaleType = Enum.ScaleType.Crop
+    tagBackgroundImage.Visible = tagBackgroundEnabled
+    tagBackgroundImage.ZIndex = 1
+    tagBackgroundImage.Parent = bg
+    local tagBackgroundCorner = Instance.new("UICorner")
+    tagBackgroundCorner.CornerRadius = UDim.new(0, 10)
+    tagBackgroundCorner.Parent = tagBackgroundImage
+
+    -- 按目标玩家身份分配专属头衔配色
+    -- 作者：青蓝-紫色渐变；测试官：紫色；测试人员：青色；普通脚本用户：白色
+    local gradStart, gradEnd
+    if rank == 3 then
+        gradStart = Color3.fromRGB(0, 220, 255)
+        gradEnd   = Color3.fromRGB(200, 0, 255)
+    elseif rank == 2 then
+        gradStart = Color3.fromRGB(190, 100, 255)
+        gradEnd   = Color3.fromRGB(105, 35, 210)
+    elseif rank == 1 then
+        gradStart = Color3.fromRGB(0, 220, 255)
+        gradEnd   = Color3.fromRGB(0, 145, 210)
+    else
+        gradStart = Color3.fromRGB(255, 255, 255)
+        gradEnd   = Color3.fromRGB(220, 225, 235)
+    end
 
     local strokeOuter = Instance.new("UIStroke")
     strokeOuter.Color = Color3.fromRGB(255, 255, 255)
@@ -246,14 +337,30 @@ local function createTag(player)
     avatarHolder.Size = UDim2.new(0, 34, 0, 34)
     avatarHolder.Position = UDim2.new(0, 12, 0.5, -17)
     avatarHolder.BackgroundTransparency = 1
+    avatarHolder.ZIndex = 3
     avatarHolder.Parent = bg
 
     local avatar = Instance.new("ImageLabel")
     avatar.Size = UDim2.new(1, 0, 1, 0)
     avatar.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     avatar.BorderSizePixel = 0
+    avatar.ZIndex = 3
     avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(player.UserId) .. "&w=100&h=100"
     avatar.Parent = avatarHolder
+    -- 通过 Roblox 缩略图 API 再取一次头像，避免 rbxthumb 地址未及时解析时头像空白。
+    task.spawn(function()
+        local thumbOk, thumbUrl = pcall(function()
+            local content, _isReady = Players:GetUserThumbnailAsync(
+                player.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size100x100
+            )
+            return content
+        end)
+        if thumbOk and thumbUrl and avatar and avatar.Parent then
+            avatar.Image = thumbUrl
+        end
+    end)
     local avatarCorner = Instance.new("UICorner")
     avatarCorner.CornerRadius = UDim.new(1, 0)
     avatarCorner.Parent = avatar
@@ -272,14 +379,16 @@ local function createTag(player)
     textContainer.Size = UDim2.new(1, -60, 1, 0)
     textContainer.Position = UDim2.new(0, 56, 0, 0)
     textContainer.BackgroundTransparency = 1
+    textContainer.ZIndex = 3
     textContainer.Parent = bg
 
     local roleText = Instance.new("TextLabel")
     roleText.Size = UDim2.new(1, 0, 0, 12)
     roleText.Position = UDim2.new(0, 0, 0, 6)
     roleText.BackgroundTransparency = 1
+    roleText.ZIndex = 3
     roleText.Text = "KUAN SCRIPT USER"
-    roleText.TextColor3 = Color3.fromRGB(0, 220, 255)
+    roleText.TextColor3 = gradStart
     roleText.TextSize = 8
     roleText.Font = Enum.Font.GothamBold
     roleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -289,6 +398,7 @@ local function createTag(player)
     mainTitleText.Size = UDim2.new(1, 0, 0, 18)
     mainTitleText.Position = UDim2.new(0, 0, 0, 17)
     mainTitleText.BackgroundTransparency = 1
+    mainTitleText.ZIndex = 3
     mainTitleText.Text = mainTitle
     mainTitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
     mainTitleText.TextSize = 13
@@ -300,6 +410,7 @@ local function createTag(player)
     subText.Size = UDim2.new(1, 0, 0, 12)
     subText.Position = UDim2.new(0, 0, 1, -14)
     subText.BackgroundTransparency = 1
+    subText.ZIndex = 3
     subText.Text = player.Name .. "  ONLINE"
     subText.TextColor3 = Color3.fromRGB(180, 160, 220)
     subText.TextSize = 9
@@ -311,6 +422,7 @@ local function createTag(player)
     dotHolder.Size = UDim2.new(0, 16, 0, 16)
     dotHolder.Position = UDim2.new(1, -24, 0.5, -8)
     dotHolder.BackgroundTransparency = 1
+    dotHolder.ZIndex = 3
     dotHolder.Parent = bg
 
     local dotOuter = Instance.new("Frame")
@@ -343,15 +455,24 @@ local function createTag(player)
     dotInnerGrad.Color = ColorSequence.new(gradStart, gradEnd)
     dotInnerGrad.Parent = dotInner
 
+    local baseTagOffset = Vector3.new(0, 1.4, 0)
+    local tagPhase = math.random() * math.pi * 2
     local rotConnection
     rotConnection = RunService.RenderStepped:Connect(function()
         if not billboard.Parent then
             rotConnection:Disconnect()
             return
         end
-        strokeOuterGrad.Rotation = (strokeOuterGrad.Rotation + 1) % 360
-        strokeInnerGrad.Rotation = (strokeInnerGrad.Rotation - 1) % 360
-        avatarStrokeGrad.Rotation = (avatarStrokeGrad.Rotation + 1) % 360
+        local lowRankEffectsBlocked = restrictLowRankTagEffects and rank == 0
+        if tagShimmerEnabled and rank == 3 and not lowRankEffectsBlocked then
+            strokeOuterGrad.Rotation = (strokeOuterGrad.Rotation + 1) % 360
+            strokeInnerGrad.Rotation = (strokeInnerGrad.Rotation - 1) % 360
+            avatarStrokeGrad.Rotation = (avatarStrokeGrad.Rotation + 1) % 360
+        end
+        local t = tick() * 2 + tagPhase
+        local dx = (tagHorizontalShakeEnabled and not lowRankEffectsBlocked) and math.cos(t) * 0.045 or 0
+        local dy = (tagVerticalShakeEnabled and not lowRankEffectsBlocked) and math.sin(t) * 0.045 or 0
+        billboard.StudsOffset = baseTagOffset + Vector3.new(dx, dy, 0)
     end)
 
     task.spawn(function()
@@ -378,7 +499,58 @@ local function refreshAllTags()
 end
 _G.KuanRefreshTags = refreshAllTags
 
+-- 高等级管理成员加入时，向等级低于加入者的本地玩家显示系统欢迎消息
+local welcomedJoiners = {}
+
+local function showRankWelcomeMessage(player)
+    if not player or player == LocalPlayer then return end
+
+    local joiningRank = getRank(player.Name)
+    local localRank = getRank(LocalPlayer.Name)
+    if joiningRank < 2 or localRank >= joiningRank then return end
+    if welcomedJoiners[player.UserId] then return end
+    welcomedJoiners[player.UserId] = true
+
+    local welcomeText
+    if joiningRank == 3 then
+        welcomeText = "欢迎款脚本作者加入游戏！"
+    elseif joiningRank == 2 then
+        welcomeText = "欢迎测试官加入游戏！"
+    else
+        return
+    end
+
+    task.spawn(function()
+        -- 优先在聊天窗口显示系统消息；若当前聊天频道不可用，则退回系统通知。
+        local displayed = false
+        for _ = 1, 8 do
+            local ok = pcall(function()
+                local channels = TextChatService:FindFirstChild("TextChannels")
+                local generalChannel = channels and channels:FindFirstChild("RBXGeneral")
+                if generalChannel then
+                    generalChannel:DisplaySystemMessage(welcomeText)
+                    displayed = true
+                end
+            end)
+            if displayed then break end
+            task.wait(0.5)
+        end
+
+        if not displayed then
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "系统消息",
+                    Text = welcomeText,
+                    Duration = 5
+                })
+            end)
+        end
+    end)
+end
+
 local function onPlayerJoin(player)
+    showRankWelcomeMessage(player)
+
     task.spawn(function()
         local char = player.Character or player.CharacterAdded:Wait()
         local head = char:WaitForChild("Head", 5)
@@ -397,6 +569,7 @@ end
 
 Players.PlayerAdded:Connect(onPlayerJoin)
 for _, player in ipairs(Players:GetPlayers()) do task.spawn(function() onPlayerJoin(player) end) end
+Players.PlayerRemoving:Connect(function(player) clearTag(player) end)
 Players.PlayerRemoving:Connect(function(player) clearTag(player) end)
 
 do
@@ -457,6 +630,9 @@ do
         screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         local overlay = Instance.new("Frame")
         overlay.Size = UDim2.new(1, 0, 1, 0)
+        -- 全屏遮罩只显示暗色背景，不能拦截菜单、下拉框的输入
+        overlay.Active = false
+        overlay.Selectable = false
         overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         overlay.BackgroundTransparency = 1
         overlay.BorderSizePixel = 0
@@ -523,6 +699,77 @@ do
     Players.PlayerAdded:Connect(hookPlayer)
 end
 
+-- 请求离开协议：通过 Roblox 聊天频道向目标发送请求。
+-- 接收方也必须运行包含本协议的脚本；其客户端会校验请求者等级后自行退出。
+local LEAVE_REQUEST_PREFIX = "[KUAN_LEAVE_REQUEST]"
+pcall(function()
+    TextChatService.MessageReceived:Connect(function(message)
+        local source = message.TextSource
+        if not source or source.UserId == LocalPlayer.UserId then return end
+        local text = tostring(message.Text or "")
+        if text:sub(1, #LEAVE_REQUEST_PREFIX) ~= LEAVE_REQUEST_PREFIX then return end
+        local targetId, senderId = text:sub(#LEAVE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
+        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId then return end
+        if tonumber(senderId) ~= source.UserId then return end
+        local sender = Players:GetPlayerByUserId(source.UserId)
+        if not sender then return end
+        local senderRank = getRank(sender.Name)
+        local myRank = getRank(LocalPlayer.Name)
+        if senderRank < 2 or senderRank <= myRank then return end
+        LocalPlayer:Kick("你已接受 " .. sender.Name .. " 发出的离开游戏请求。")
+    end)
+end)
+
+-- 黑屏/恢复协议：只改变接收方自己的客户端画面；接收方需运行配套脚本。
+local BLACKOUT_REQUEST_PREFIX = "[KUAN_BLACKOUT]"
+local RESTORE_REQUEST_PREFIX = "[KUAN_RESTORE]"
+local blackoutGui = nil
+local function setLocalBlackout(enabled)
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
+    if enabled then
+        if blackoutGui and blackoutGui.Parent then return end
+        blackoutGui = Instance.new("ScreenGui")
+        blackoutGui.Name = "KuanScriptBlackout"
+        blackoutGui.IgnoreGuiInset = true
+        blackoutGui.DisplayOrder = 1000000
+        blackoutGui.ResetOnSpawn = false
+        local frame = Instance.new("Frame")
+        frame.Name = "Blackout"
+        frame.Size = UDim2.fromScale(1, 1)
+        frame.Position = UDim2.fromScale(0, 0)
+        frame.BackgroundColor3 = Color3.new(0, 0, 0)
+        frame.BorderSizePixel = 0
+        frame.Parent = blackoutGui
+        blackoutGui.Parent = playerGui
+    elseif blackoutGui then
+        blackoutGui:Destroy()
+        blackoutGui = nil
+    end
+end
+
+pcall(function()
+    TextChatService.MessageReceived:Connect(function(message)
+        local source = message.TextSource
+        if not source or source.UserId == LocalPlayer.UserId then return end
+        local text = tostring(message.Text or "")
+        local prefix, enabled
+        if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
+            prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
+        elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
+            prefix, enabled = RESTORE_REQUEST_PREFIX, false
+        else
+            return
+        end
+        local targetId, senderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
+        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId or tonumber(senderId) ~= source.UserId then return end
+        local sender = Players:GetPlayerByUserId(source.UserId)
+        if not sender then return end
+        local senderRank, myRank = getRank(sender.Name), getRank(LocalPlayer.Name)
+        if senderRank < 2 or senderRank <= myRank then return end
+        setLocalBlackout(enabled)
+    end)
+end)
+
 local function Soundify(tabObj)
     local oldSection = tabObj.Section
     if oldSection then
@@ -579,6 +826,8 @@ do
         TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.5 }):Play()
         local panel = Instance.new("Frame", gui)
         panel.Size = UDim2.new(0, 320, 0, 170)
+        panel.Active = false
+        panel.Selectable = false
         panel.Position = UDim2.new(0.5, -160, 0.5, -85)
         panel.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
         Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
@@ -603,6 +852,9 @@ do
         desc.TextWrapped = true
         local yesBtn = Instance.new("TextButton", panel)
         yesBtn.Size = UDim2.new(0, 130, 0, 36)
+        yesBtn.Active = true
+        yesBtn.Selectable = true
+        yesBtn.ZIndex = 5
         yesBtn.Position = UDim2.new(0, 20, 1, -52)
         yesBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
         yesBtn.Text = "是"
@@ -611,6 +863,9 @@ do
         Instance.new("UICorner", yesBtn).CornerRadius = UDim.new(0, 8)
         local noBtn = Instance.new("TextButton", panel)
         noBtn.Size = UDim2.new(0, 130, 0, 36)
+        noBtn.Active = true
+        noBtn.Selectable = true
+        noBtn.ZIndex = 5
         noBtn.Position = UDim2.new(1, -150, 1, -52)
         noBtn.BackgroundColor3 = Color3.fromRGB(60, 64, 74)
         noBtn.Text = "否"
@@ -668,8 +923,8 @@ Feng:Social({ Name = "殺脚本群", SubName = "殺脚本", SmlName = "QQ群", c
 
 Window:TabDivider()
 
-local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
-local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关", Logo = "83701039519151", Collapsible = true, Collapsed = true })
+ local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
+local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关与效果", Logo = "83701039519151", Collapsible = true, Collapsed = true })
 sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = function(v)
     showHeadTagEnabled = v
     if v then
@@ -678,7 +933,242 @@ sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = functi
         for p in pairs(activeTags) do clearTag(p) end
     end
 end })
+if getRank(LocalPlayer.Name) >= 2 then
+    sectionTag:Toggle({ Name = "头衔背景图片", Value = false, Callback = function(v)
+        tagBackgroundEnabled = v
+        for _, billboard in pairs(activeTags) do
+            local image = billboard:FindFirstChild("TagBackgroundImage", true)
+            if image then image.Visible = v end
+        end
+    end })
+end
+if getRank(LocalPlayer.Name) == 3 then
+    sectionTag:Toggle({ Name = "流光效果", Value = true, Callback = function(v)
+        tagShimmerEnabled = v
+    end })
+end
+sectionTag:Toggle({ Name = "上下震动", Value = false, Callback = function(v)
+    tagVerticalShakeEnabled = v
+end })
+sectionTag:Toggle({ Name = "左右震动", Value = false, Callback = function(v)
+    tagHorizontalShakeEnabled = v
+end })
 
+-- 区域管理仅向测试人员、测试官和作者开放
+if getRank(LocalPlayer.Name) >= 1 then
+    local sectionRegion = tabPerm:Section({
+        Name = "区域管理",
+        SubName = "位置查看与低等级玩家管理",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+
+    sectionRegion:Button({
+        Name = "定位自己的位置",
+        Callback = function()
+            local character = LocalPlayer.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+            if not root then
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "区域管理", Text = "暂时无法获取位置，请确认角色已加载。", Duration = 4
+                    })
+                end)
+                return
+            end
+            local pos = root.Position
+            local positionText = string.format("X: %.2f  Y: %.2f  Z: %.2f", pos.X, pos.Y, pos.Z)
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "你当前的位置", Text = positionText, Duration = 8
+                })
+            end)
+            print("[款脚本] 你当前的位置: " .. positionText)
+        end
+    })
+
+    -- 测试人员专属：仅影响本地看到的头衔特效，不会远程修改其他玩家客户端。
+    sectionRegion:Toggle({
+        Name = "本地限制低等级头衔特效",
+        Value = false,
+        Callback = function(v)
+            restrictLowRankTagEffects = v
+            refreshAllTags()
+        end
+    })
+end
+
+-- 测试官和作者的聊天“开/关”权限独立于测试人员区域管理。
+-- “开”会显示本地客户端可识别的其他脚本用户头衔；“关”则隐藏。
+if getRank(LocalPlayer.Name) >= 2 then
+    local sectionOfficer = tabPerm:Section({
+        Name = "测试官与作者权限",
+        SubName = "头衔显示管理",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionOfficer:Button({
+        Name = "刷新玩家头衔显示",
+        Callback = function()
+            showOtherTagsEnabled = true
+            allowLowRankTagsEnabled = true
+            refreshAllTags()
+        end
+    })
+    sectionOfficer:Button({
+        Name = "关闭其他玩家头衔显示",
+        Callback = function()
+            showOtherTagsEnabled = false
+            allowLowRankTagsEnabled = false
+            refreshAllTags()
+        end
+    })
+
+    -- 请求目标离开：目标也必须运行配套款脚本，接收端才会自动同意并退出。
+    local leaveRequestTarget = ""
+    local sectionLeaveRequest = tabPerm:Section({
+        Name = "请求玩家离开",
+        SubName = "对方运行配套脚本时自动同意",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionLeaveRequest:Textbox({
+        Name = "输入目标 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) leaveRequestTarget = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    sectionLeaveRequest:Button({
+        Name = "发送离开请求",
+        Callback = function()
+            if leaveRequestTarget == "" then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "请先输入用户名。", Duration = 4}) end)
+                return
+            end
+            local target = Players:FindFirstChild(leaveRequestTarget)
+            if not target then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "当前服务器找不到该玩家。", Duration = 4}) end)
+                return
+            end
+            if target == LocalPlayer or getRank(target.Name) >= getRank(LocalPlayer.Name) then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "只能请求等级低于自己的玩家。", Duration = 4}) end)
+                return
+            end
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            local channel = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+            if not channel then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "聊天频道不可用，无法发送请求。", Duration = 4}) end)
+                return
+            end
+            local payload = LEAVE_REQUEST_PREFIX .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
+            local ok = pcall(function() channel:SendAsync(payload) end)
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = ok and ("已向 " .. target.Name .. " 发送请求；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+        end
+    })
+
+    -- 黑屏与恢复：通过聊天向目标发送指令，目标需运行配套脚本。
+    local blackoutTargetName = ""
+    local sectionBlackout = tabPerm:Section({
+        Name = "玩家屏幕管理",
+        SubName = "向低等级配套脚本用户发送黑屏/恢复指令",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionBlackout:Textbox({
+        Name = "输入目标 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) blackoutTargetName = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    local function sendScreenCommand(prefix, title, actionText)
+        if blackoutTargetName == "" then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "请先输入用户名。", Duration = 4}) end)
+            return
+        end
+        local target = Players:FindFirstChild(blackoutTargetName)
+        if not target then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "当前服务器找不到该玩家。", Duration = 4}) end)
+            return
+        end
+        if target == LocalPlayer or getRank(target.Name) >= getRank(LocalPlayer.Name) then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "只能操作等级低于自己的玩家。", Duration = 4}) end)
+            return
+        end
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        local channel = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+        if not channel then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "聊天频道不可用，无法发送指令。", Duration = 4}) end)
+            return
+        end
+        local payload = prefix .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
+        local ok = pcall(function() channel:SendAsync(payload) end)
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+    end
+    sectionBlackout:Button({Name = "请求对方黑屏", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
+    sectionBlackout:Button({Name = "请求对方恢复屏幕", Callback = function() sendScreenCommand(RESTORE_REQUEST_PREFIX, "恢复屏幕", "已向 ") end})
+
+    -- 黑名单管理：本地保存并在本机启动脚本时检查；不具备跨客户端同步能力。
+    local blacklistInputName = ""
+    local sectionBlacklist = tabPerm:Section({
+        Name = "款脚本黑名单",
+        SubName = "添加或移除本地黑名单记录",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionBlacklist:Textbox({
+        Name = "输入玩家 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) blacklistInputName = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    local function notifyBlacklist(message)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "款脚本黑名单", Text = message, Duration = 4
+            })
+        end)
+        print("[款脚本黑名单] " .. message)
+    end
+    sectionBlacklist:Button({
+        Name = "添加到黑名单",
+        Callback = function()
+            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
+            if isScriptBlacklisted(blacklistInputName) then notifyBlacklist(blacklistInputName .. " 已在本地黑名单中。"); return end
+            table.insert(SCRIPT_BLACKLIST, blacklistInputName)
+            local saved = saveScriptBlacklist()
+            notifyBlacklist("已记录 " .. blacklistInputName .. (saved and "（已尝试保存到本机）" or "（当前执行器不支持文件保存，仅本次运行有效）"))
+        end
+    })
+    sectionBlacklist:Button({
+        Name = "从黑名单移除",
+        Callback = function()
+            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
+            local wanted = string.lower(blacklistInputName)
+            local removed = false
+            for i = #SCRIPT_BLACKLIST, 1, -1 do
+                if string.lower(SCRIPT_BLACKLIST[i]) == wanted then
+                    table.remove(SCRIPT_BLACKLIST, i)
+                    removed = true
+                end
+            end
+            if removed then
+                saveScriptBlacklist()
+                notifyBlacklist("已从本地黑名单移除 " .. blacklistInputName .. "。")
+            else
+                notifyBlacklist("名单中没有这个用户名。")
+            end
+        end
+    })
+    sectionBlacklist:Button({
+        Name = "查看本地黑名单",
+        Callback = function()
+            if #SCRIPT_BLACKLIST == 0 then notifyBlacklist("当前本地黑名单为空。")
+            else notifyBlacklist("本地名单：" .. table.concat(SCRIPT_BLACKLIST, ", ")) end
+        end
+    })
+end
 local tabCommon = Soundify(Window:Tab("通用", "83701039519151"))
 
 local sectionESP = tabCommon:Section({ Name = "透视", SubName = "玩家透视", Logo = "83701039519151", Collapsible = true, Collapsed = true })
@@ -1392,13 +1882,13 @@ if isFlash then
     Players.PlayerAdded:Connect(function(p)
         table.insert(playerList, p.Name)
         if targetDropdown and targetDropdown.Refresh then
-            pcall(function() targetDropdown:Refresh(playerList) end)
+            pcall(function() targetDropdown.Refresh(playerList) end)
         end
     end)
     Players.PlayerRemoving:Connect(function(p)
         for i, n in ipairs(playerList) do if n == p.Name then table.remove(playerList, i) break end end
         if targetDropdown and targetDropdown.Refresh then
-            pcall(function() targetDropdown:Refresh(playerList) end)
+            pcall(function() targetDropdown.Refresh(playerList) end)
         end
     end)
 
