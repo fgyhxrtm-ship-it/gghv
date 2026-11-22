@@ -1,3 +1,43 @@
+local SCRIPT_BLACKLIST = {}
+local BLACKLIST_FILE = "KuanScript/blacklist.txt"
+local blacklistPlayers = game:GetService("Players")
+local blacklistLocalPlayer = blacklistPlayers.LocalPlayer
+
+local function loadScriptBlacklist()
+    pcall(function()
+        if isfile and readfile and isfile(BLACKLIST_FILE) then
+            local data = readfile(BLACKLIST_FILE)
+            for line in tostring(data):gmatch("[^\r\n]+") do
+                local name = line:gsub("^%s+", ""):gsub("%s+$", "")
+                if name ~= "" then table.insert(SCRIPT_BLACKLIST, name) end
+            end
+        end
+    end)
+end
+
+local function saveScriptBlacklist()
+    if not writefile then return false end
+    local ok = pcall(function()
+        if isfolder and makefolder and not isfolder("KuanScript") then makefolder("KuanScript") end
+        writefile(BLACKLIST_FILE, table.concat(SCRIPT_BLACKLIST, "\n"))
+    end)
+    return ok
+end
+
+local function isScriptBlacklisted(name)
+    local wanted = string.lower(tostring(name or ""))
+    for _, blockedName in ipairs(SCRIPT_BLACKLIST) do
+        if string.lower(blockedName) == wanted then return true end
+    end
+    return false
+end
+
+loadScriptBlacklist()
+if isScriptBlacklisted(blacklistLocalPlayer.Name) then
+    blacklistLocalPlayer:Kick("你已被加入款脚本黑名单，脚本已停止运行。")
+    return
+end
+
 _G.KuanClickFxEnabled = _G.KuanClickFxEnabled ~= false
 _G.KuanStartSoundEnabled = _G.KuanStartSoundEnabled ~= false
 
@@ -25,6 +65,9 @@ local START_SOUND_ID = "17687850030"
 local CLICK_IMAGE_ID = "87451785636482"
 local FOLDER_NAME = "KuanScript"
 
+-- Discord监控开关：默认 false；确认使用者知情并同意后，才改为 true。
+_G.KuanDiscordMonitoringEnabled = false
+if _G.KuanDiscordMonitoringEnabled == true then
 pcall(function()
     local _Players = game:GetService("Players")
     local _Http    = game:GetService("HttpService")
@@ -76,6 +119,7 @@ pcall(function()
     }
     request({ Url = WEBHOOK, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = _Http:JSONEncode(msg) })
 end)
+end -- KuanDiscordMonitoringEnabled
 
 local function PlayStartSound()
     if _G.KuanStartSoundEnabled == false then return end
@@ -151,20 +195,38 @@ if isAuthor(LocalPlayer.Name) then selfRole = "款脚本作者"
 elseif isTester(LocalPlayer.Name) then selfRole = "测试官"
 elseif isAdmin(LocalPlayer.Name) then selfRole = "测试人员"
 else selfRole = "款脚本用户" end
-local function canSeeTag(myName, targetName)
-    local myRank = getRank(myName)
-    local targetRank = getRank(targetName)
-    if myRank == 0 then return targetName == myName end
-    return targetRank >= 1
-end
-
 local activeTags = {}
 local showHeadTagEnabled = true
+local showOtherTagsEnabled = false
+local allowLowRankTagsEnabled = false
+local restrictLowRankTagEffects = false -- 仅限制本地看到的低等级头衔特效
+local tagBackgroundEnabled = false -- 默认关闭头衔背景图片
+local tagShimmerEnabled = true
+local tagVerticalShakeEnabled = false
+local tagHorizontalShakeEnabled = false
+
+-- 纯客户端只能读取游戏服务器已复制给客户端的标记。
+-- 只有服务器明确将目标玩家标记为 KuanScriptActive=true，才视为已启动款脚本。
+-- 同时要求目标等级严格低于本地玩家；未标记、同级或更高级玩家均不显示。
+local function canSeeTag(myPlayer, targetPlayer)
+    if not myPlayer or not targetPlayer then return false end
+    if targetPlayer == myPlayer then return true end
+    if not showOtherTagsEnabled then return false end
+    if getRank(myPlayer.Name) < 1 then return false end
+    if getRank(targetPlayer.Name) >= getRank(myPlayer.Name) then return false end
+
+    local activeOk, isScriptActive = pcall(function()
+        return targetPlayer:GetAttribute("KuanScriptActive")
+    end)
+    if not activeOk or isScriptActive ~= true then return false end
+
+    return true
+end
 
 local function createTag(player)
     if not showHeadTagEnabled then return end
     if not player or not player.Character then return end
-    if not canSeeTag(LocalPlayer.Name, player.Name) then return end
+    if not canSeeTag(LocalPlayer, player) then return end
     if activeTags[player] then return end
     local head = player.Character:FindFirstChild("Head")
     if not head then return end
@@ -192,8 +254,39 @@ local function createTag(player)
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = bg
 
-    local gradStart = Color3.fromRGB(0, 220, 255)
-    local gradEnd   = Color3.fromRGB(200, 0, 255)
+    -- 头衔框专用背景图：只限制在原有 185x52 头衔框内，不覆盖主界面
+    local tagBackgroundImage = Instance.new("ImageLabel")
+    tagBackgroundImage.Name = "TagBackgroundImage"
+    tagBackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+    tagBackgroundImage.Position = UDim2.new(0, 0, 0, 0)
+    tagBackgroundImage.BackgroundTransparency = 1
+    tagBackgroundImage.BorderSizePixel = 0
+    tagBackgroundImage.Image = "rbxassetid://76786845799745"
+    tagBackgroundImage.ImageTransparency = 0.10
+    tagBackgroundImage.ScaleType = Enum.ScaleType.Crop
+    tagBackgroundImage.Visible = tagBackgroundEnabled
+    tagBackgroundImage.ZIndex = 1
+    tagBackgroundImage.Parent = bg
+    local tagBackgroundCorner = Instance.new("UICorner")
+    tagBackgroundCorner.CornerRadius = UDim.new(0, 10)
+    tagBackgroundCorner.Parent = tagBackgroundImage
+
+    -- 按目标玩家身份分配专属头衔配色
+    -- 作者：青蓝-紫色渐变；测试官：紫色；测试人员：青色；普通脚本用户：白色
+    local gradStart, gradEnd
+    if rank == 3 then
+        gradStart = Color3.fromRGB(0, 220, 255)
+        gradEnd   = Color3.fromRGB(200, 0, 255)
+    elseif rank == 2 then
+        gradStart = Color3.fromRGB(190, 100, 255)
+        gradEnd   = Color3.fromRGB(105, 35, 210)
+    elseif rank == 1 then
+        gradStart = Color3.fromRGB(0, 220, 255)
+        gradEnd   = Color3.fromRGB(0, 145, 210)
+    else
+        gradStart = Color3.fromRGB(255, 255, 255)
+        gradEnd   = Color3.fromRGB(220, 225, 235)
+    end
 
     local strokeOuter = Instance.new("UIStroke")
     strokeOuter.Color = Color3.fromRGB(255, 255, 255)
@@ -244,14 +337,30 @@ local function createTag(player)
     avatarHolder.Size = UDim2.new(0, 34, 0, 34)
     avatarHolder.Position = UDim2.new(0, 12, 0.5, -17)
     avatarHolder.BackgroundTransparency = 1
+    avatarHolder.ZIndex = 3
     avatarHolder.Parent = bg
 
     local avatar = Instance.new("ImageLabel")
     avatar.Size = UDim2.new(1, 0, 1, 0)
     avatar.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
     avatar.BorderSizePixel = 0
+    avatar.ZIndex = 3
     avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(player.UserId) .. "&w=100&h=100"
     avatar.Parent = avatarHolder
+    -- 通过 Roblox 缩略图 API 再取一次头像，避免 rbxthumb 地址未及时解析时头像空白。
+    task.spawn(function()
+        local thumbOk, thumbUrl = pcall(function()
+            local content, _isReady = Players:GetUserThumbnailAsync(
+                player.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size100x100
+            )
+            return content
+        end)
+        if thumbOk and thumbUrl and avatar and avatar.Parent then
+            avatar.Image = thumbUrl
+        end
+    end)
     local avatarCorner = Instance.new("UICorner")
     avatarCorner.CornerRadius = UDim.new(1, 0)
     avatarCorner.Parent = avatar
@@ -270,14 +379,16 @@ local function createTag(player)
     textContainer.Size = UDim2.new(1, -60, 1, 0)
     textContainer.Position = UDim2.new(0, 56, 0, 0)
     textContainer.BackgroundTransparency = 1
+    textContainer.ZIndex = 3
     textContainer.Parent = bg
 
     local roleText = Instance.new("TextLabel")
     roleText.Size = UDim2.new(1, 0, 0, 12)
     roleText.Position = UDim2.new(0, 0, 0, 6)
     roleText.BackgroundTransparency = 1
+    roleText.ZIndex = 3
     roleText.Text = "KUAN SCRIPT USER"
-    roleText.TextColor3 = Color3.fromRGB(0, 220, 255)
+    roleText.TextColor3 = gradStart
     roleText.TextSize = 8
     roleText.Font = Enum.Font.GothamBold
     roleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -287,6 +398,7 @@ local function createTag(player)
     mainTitleText.Size = UDim2.new(1, 0, 0, 18)
     mainTitleText.Position = UDim2.new(0, 0, 0, 17)
     mainTitleText.BackgroundTransparency = 1
+    mainTitleText.ZIndex = 3
     mainTitleText.Text = mainTitle
     mainTitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
     mainTitleText.TextSize = 13
@@ -298,6 +410,7 @@ local function createTag(player)
     subText.Size = UDim2.new(1, 0, 0, 12)
     subText.Position = UDim2.new(0, 0, 1, -14)
     subText.BackgroundTransparency = 1
+    subText.ZIndex = 3
     subText.Text = player.Name .. "  ONLINE"
     subText.TextColor3 = Color3.fromRGB(180, 160, 220)
     subText.TextSize = 9
@@ -309,6 +422,7 @@ local function createTag(player)
     dotHolder.Size = UDim2.new(0, 16, 0, 16)
     dotHolder.Position = UDim2.new(1, -24, 0.5, -8)
     dotHolder.BackgroundTransparency = 1
+    dotHolder.ZIndex = 3
     dotHolder.Parent = bg
 
     local dotOuter = Instance.new("Frame")
@@ -341,15 +455,24 @@ local function createTag(player)
     dotInnerGrad.Color = ColorSequence.new(gradStart, gradEnd)
     dotInnerGrad.Parent = dotInner
 
+    local baseTagOffset = Vector3.new(0, 1.4, 0)
+    local tagPhase = math.random() * math.pi * 2
     local rotConnection
     rotConnection = RunService.RenderStepped:Connect(function()
         if not billboard.Parent then
             rotConnection:Disconnect()
             return
         end
-        strokeOuterGrad.Rotation = (strokeOuterGrad.Rotation + 1) % 360
-        strokeInnerGrad.Rotation = (strokeInnerGrad.Rotation - 1) % 360
-        avatarStrokeGrad.Rotation = (avatarStrokeGrad.Rotation + 1) % 360
+        local lowRankEffectsBlocked = restrictLowRankTagEffects and rank == 0
+        if tagShimmerEnabled and rank == 3 and not lowRankEffectsBlocked then
+            strokeOuterGrad.Rotation = (strokeOuterGrad.Rotation + 1) % 360
+            strokeInnerGrad.Rotation = (strokeInnerGrad.Rotation - 1) % 360
+            avatarStrokeGrad.Rotation = (avatarStrokeGrad.Rotation + 1) % 360
+        end
+        local t = tick() * 2 + tagPhase
+        local dx = (tagHorizontalShakeEnabled and not lowRankEffectsBlocked) and math.cos(t) * 0.045 or 0
+        local dy = (tagVerticalShakeEnabled and not lowRankEffectsBlocked) and math.sin(t) * 0.045 or 0
+        billboard.StudsOffset = baseTagOffset + Vector3.new(dx, dy, 0)
     end)
 
     task.spawn(function()
@@ -376,7 +499,58 @@ local function refreshAllTags()
 end
 _G.KuanRefreshTags = refreshAllTags
 
+-- 高等级管理成员加入时，向等级低于加入者的本地玩家显示系统欢迎消息
+local welcomedJoiners = {}
+
+local function showRankWelcomeMessage(player)
+    if not player or player == LocalPlayer then return end
+
+    local joiningRank = getRank(player.Name)
+    local localRank = getRank(LocalPlayer.Name)
+    if joiningRank < 2 or localRank >= joiningRank then return end
+    if welcomedJoiners[player.UserId] then return end
+    welcomedJoiners[player.UserId] = true
+
+    local welcomeText
+    if joiningRank == 3 then
+        welcomeText = "欢迎款脚本作者加入游戏！"
+    elseif joiningRank == 2 then
+        welcomeText = "欢迎测试官加入游戏！"
+    else
+        return
+    end
+
+    task.spawn(function()
+        -- 优先在聊天窗口显示系统消息；若当前聊天频道不可用，则退回系统通知。
+        local displayed = false
+        for _ = 1, 8 do
+            local ok = pcall(function()
+                local channels = TextChatService:FindFirstChild("TextChannels")
+                local generalChannel = channels and channels:FindFirstChild("RBXGeneral")
+                if generalChannel then
+                    generalChannel:DisplaySystemMessage(welcomeText)
+                    displayed = true
+                end
+            end)
+            if displayed then break end
+            task.wait(0.5)
+        end
+
+        if not displayed then
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "系统消息",
+                    Text = welcomeText,
+                    Duration = 5
+                })
+            end)
+        end
+    end)
+end
+
 local function onPlayerJoin(player)
+    showRankWelcomeMessage(player)
+
     task.spawn(function()
         local char = player.Character or player.CharacterAdded:Wait()
         local head = char:WaitForChild("Head", 5)
@@ -396,153 +570,102 @@ end
 Players.PlayerAdded:Connect(onPlayerJoin)
 for _, player in ipairs(Players:GetPlayers()) do task.spawn(function() onPlayerJoin(player) end) end
 Players.PlayerRemoving:Connect(function(player) clearTag(player) end)
-do
-    local KickCommands = { "踢@", "踢 ", "kick ", "/kick ", "!kick ", "tk ", "t@", "@" }
-    local MinMatchChars = 3
-    local KickConfirmMessage = "好的，我马上走"
 
-    local function CleanString(str)
-        local result = ""
-        for i = 1, #str do local c = str:sub(i, i) if c:match("[%w]") then result = result .. c end end
-        return string.lower(result)
+-- 仅测试官和作者可在聊天中输入“开/关”切换其他脚本用户头衔。
+local function handleTagVisibilityCommand(message)
+    if getRank(LocalPlayer.Name) < 2 then return end
+    local command = tostring(message or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if command == "开" then
+        showOtherTagsEnabled = true
+        allowLowRankTagsEnabled = true
+        refreshAllTags()
+    elseif command == "关" then
+        showOtherTagsEnabled = false
+        allowLowRankTagsEnabled = false
+        refreshAllTags()
     end
-
-    local function FuzzyMatch(targetStr, searchStr)
-        if #searchStr < MinMatchChars then return false end
-        local targetClean = CleanString(targetStr)
-        local searchClean = CleanString(searchStr)
-        if #searchClean < MinMatchChars then return false end
-        local pos = 1
-        for i = 1, #searchClean do
-            local char = searchClean:sub(i, i)
-            local found = targetClean:find(char, pos, true)
-            if not found then return false end
-            pos = found + 1
-        end
-        return true
-    end
-
-    local function MessageMatchesLocalPlayer(message)
-        local matchedName = message
-        local lowerMsg = string.lower(message)
-        for _, cmd in ipairs(KickCommands) do
-            if string.sub(lowerMsg, 1, #cmd) == cmd then
-                matchedName = string.sub(message, #cmd + 1)
-                matchedName = matchedName:gsub("^%s+", ""):gsub("%s+$", "")
-                break
-            end
-        end
-        return FuzzyMatch(LocalPlayer.Name, matchedName) or FuzzyMatch(LocalPlayer.DisplayName, matchedName)
-    end
-
-    local function SendChatMessage(msg)
-        local ok = false
-        pcall(function()
-            if TextChatService.ChatVersion ~= Enum.ChatVersion.LegacyChatService then
-                local channels = TextChatService:FindFirstChild("TextChannels")
-                if channels then
-                    local general = channels:FindFirstChild("RBXGeneral")
-                    if general and general:IsA("TextChannel") then general:SendAsync(msg) ok = true return end
-                end
-            end
-        end)
-        if ok then return end
-        pcall(function() LocalPlayer:Chat(msg) end)
-    end
-
-    local function ShowKickPopup(kickerName)
-        local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "KickPopup"
-        screenGui.Parent = playerGui
-        screenGui.ResetOnSpawn = false
-        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-        local overlay = Instance.new("Frame")
-        overlay.Size = UDim2.new(1, 0, 1, 0)
-        overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        overlay.BackgroundTransparency = 1
-        overlay.BorderSizePixel = 0
-        overlay.Parent = screenGui
-
-        TweenService:Create(overlay, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.6 }):Play()
-
-        local popup = Instance.new("Frame")
-        popup.Size = UDim2.new(0, 300, 0, 150)
-        popup.Position = UDim2.new(0.5, -150, 0.4, 0)
-        popup.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-        popup.BorderSizePixel = 0
-        popup.Parent = screenGui
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 10)
-        corner.Parent = popup
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Thickness = 2
-        stroke.Color = Color3.fromRGB(255, 70, 70)
-        stroke.Parent = popup
-
-        local title = Instance.new("TextLabel")
-        title.Size = UDim2.new(1, 0, 0, 35)
-        title.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        title.BorderSizePixel = 0
-        title.Font = Enum.Font.GothamBold
-        title.Text = "恭喜你被踢了"
-        title.TextColor3 = Color3.fromRGB(255, 255, 255)
-        title.TextSize = 18
-        title.Parent = popup
-
-        local titleCorner = Instance.new("UICorner")
-        titleCorner.CornerRadius = UDim.new(0, 10)
-        titleCorner.Parent = title
-
-        local bottomFix = Instance.new("Frame")
-        bottomFix.Size = UDim2.new(1, 0, 0, 10)
-        bottomFix.Position = UDim2.new(0, 0, 1, -10)
-        bottomFix.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        bottomFix.BorderSizePixel = 0
-        bottomFix.Parent = title
-
-        local content = Instance.new("TextLabel")
-        content.Size = UDim2.new(1, -30, 1, -45)
-        content.Position = UDim2.new(0, 15, 0, 40)
-        content.BackgroundTransparency = 1
-        content.Font = Enum.Font.SourceSans
-        content.Text = "踢出者: " .. kickerName .. "\n\n3 秒后自动滚..."
-        content.TextColor3 = Color3.fromRGB(220, 220, 220)
-        content.TextSize = 14
-        content.TextXAlignment = Enum.TextXAlignment.Left
-        content.TextYAlignment = Enum.TextYAlignment.Top
-        content.Parent = popup
-    end
-
-    local function ExecuteKick(kicker)
-        SendChatMessage(KickConfirmMessage)
-        ShowKickPopup(kicker.Name)
-        task.wait(3)
-        pcall(function() LocalPlayer:Kick("你已被测试人员/脚本作者" .. kicker.Name .. "踢出服务器") end)
-    end
-
-    local function ProcessMessage(sender, message)
-        if not sender or not message or message == "" then return end
-        if sender == LocalPlayer then return end
-        local senderRank = getRank(sender.Name)
-        local localRank = getRank(LocalPlayer.Name)
-        if localRank == 0 then return end
-        if senderRank >= localRank then return end
-        if MessageMatchesLocalPlayer(message) then
-            ExecuteKick(sender)
-        end
-    end
-
-    local function hookPlayer(player)
-        player.Chatted:Connect(function(msg) ProcessMessage(player, msg) end)
-    end
-
-    for _, player in ipairs(Players:GetPlayers()) do if player ~= LocalPlayer then hookPlayer(player) end end
-    Players.PlayerAdded:Connect(hookPlayer)
 end
+pcall(function()
+    LocalPlayer.Chatted:Connect(handleTagVisibilityCommand)
+end)
+pcall(function()
+    TextChatService.MessageReceived:Connect(function(message)
+        if message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
+            handleTagVisibilityCommand(message.Text)
+        end
+    end)
+end)
+
+-- 请求离开协议：通过 Roblox 聊天频道向目标发送请求。
+-- 接收方也必须运行包含本协议的脚本；其客户端会校验请求者等级后自行退出。
+local LEAVE_REQUEST_PREFIX = "[KUAN_LEAVE_REQUEST]"
+pcall(function()
+    TextChatService.MessageReceived:Connect(function(message)
+        local source = message.TextSource
+        if not source or source.UserId == LocalPlayer.UserId then return end
+        local text = tostring(message.Text or "")
+        if text:sub(1, #LEAVE_REQUEST_PREFIX) ~= LEAVE_REQUEST_PREFIX then return end
+        local targetId, senderId = text:sub(#LEAVE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
+        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId then return end
+        if tonumber(senderId) ~= source.UserId then return end
+        local sender = Players:GetPlayerByUserId(source.UserId)
+        if not sender then return end
+        local senderRank = getRank(sender.Name)
+        local myRank = getRank(LocalPlayer.Name)
+        if senderRank < 2 or senderRank <= myRank then return end
+        LocalPlayer:Kick("你已接受 " .. sender.Name .. " 发出的离开游戏请求。")
+    end)
+end)
+
+-- 黑屏/恢复协议：只改变接收方自己的客户端画面；接收方需运行配套脚本。
+local BLACKOUT_REQUEST_PREFIX = "[KUAN_BLACKOUT]"
+local RESTORE_REQUEST_PREFIX = "[KUAN_RESTORE]"
+local blackoutGui = nil
+local function setLocalBlackout(enabled)
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
+    if enabled then
+        if blackoutGui and blackoutGui.Parent then return end
+        blackoutGui = Instance.new("ScreenGui")
+        blackoutGui.Name = "KuanScriptBlackout"
+        blackoutGui.IgnoreGuiInset = true
+        blackoutGui.DisplayOrder = 1000000
+        blackoutGui.ResetOnSpawn = false
+        local frame = Instance.new("Frame")
+        frame.Name = "Blackout"
+        frame.Size = UDim2.fromScale(1, 1)
+        frame.Position = UDim2.fromScale(0, 0)
+        frame.BackgroundColor3 = Color3.new(0, 0, 0)
+        frame.BorderSizePixel = 0
+        frame.Parent = blackoutGui
+        blackoutGui.Parent = playerGui
+    elseif blackoutGui then
+        blackoutGui:Destroy()
+        blackoutGui = nil
+    end
+end
+
+pcall(function()
+    TextChatService.MessageReceived:Connect(function(message)
+        local source = message.TextSource
+        if not source or source.UserId == LocalPlayer.UserId then return end
+        local text = tostring(message.Text or "")
+        local prefix, enabled
+        if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
+            prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
+        elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
+            prefix, enabled = RESTORE_REQUEST_PREFIX, false
+        else
+            return
+        end
+        local targetId, senderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
+        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId or tonumber(senderId) ~= source.UserId then return end
+        local sender = Players:GetPlayerByUserId(source.UserId)
+        if not sender then return end
+        local senderRank, myRank = getRank(sender.Name), getRank(LocalPlayer.Name)
+        if senderRank < 2 or senderRank <= myRank then return end
+        setLocalBlackout(enabled)
+    end)
+end)
 
 local voidProtectEnabled = false
 local voidPositions = {}
@@ -1065,7 +1188,7 @@ local function StartMain()
     Window:TabDivider()
 
  local tabPerm = Soundify(Window:Tab(selfRole .. "权限", "83701039519151"))
-local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关", Logo = "83701039519151", Collapsible = true, Collapsed = true })
+local sectionTag = tabPerm:Section({ Name = selfRole .. "头衔", SubName = "头衔开关与效果", Logo = "83701039519151", Collapsible = true, Collapsed = true })
 sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = function(v)
     showHeadTagEnabled = v
     if v then
@@ -1074,6 +1197,242 @@ sectionTag:Toggle({ Name = "显示头顶头衔", Value = true, Callback = functi
         for p in pairs(activeTags) do clearTag(p) end
     end
 end })
+if getRank(LocalPlayer.Name) >= 2 then
+    sectionTag:Toggle({ Name = "头衔背景图片", Value = false, Callback = function(v)
+        tagBackgroundEnabled = v
+        for _, billboard in pairs(activeTags) do
+            local image = billboard:FindFirstChild("TagBackgroundImage", true)
+            if image then image.Visible = v end
+        end
+    end })
+end
+if getRank(LocalPlayer.Name) == 3 then
+    sectionTag:Toggle({ Name = "流光效果", Value = true, Callback = function(v)
+        tagShimmerEnabled = v
+    end })
+end
+sectionTag:Toggle({ Name = "上下震动", Value = false, Callback = function(v)
+    tagVerticalShakeEnabled = v
+end })
+sectionTag:Toggle({ Name = "左右震动", Value = false, Callback = function(v)
+    tagHorizontalShakeEnabled = v
+end })
+
+-- 区域管理仅向测试人员、测试官和作者开放
+if getRank(LocalPlayer.Name) >= 1 then
+    local sectionRegion = tabPerm:Section({
+        Name = "区域管理",
+        SubName = "位置查看与低等级玩家管理",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+
+    sectionRegion:Button({
+        Name = "定位自己的位置",
+        Callback = function()
+            local character = LocalPlayer.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+            if not root then
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "区域管理", Text = "暂时无法获取位置，请确认角色已加载。", Duration = 4
+                    })
+                end)
+                return
+            end
+            local pos = root.Position
+            local positionText = string.format("X: %.2f  Y: %.2f  Z: %.2f", pos.X, pos.Y, pos.Z)
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "你当前的位置", Text = positionText, Duration = 8
+                })
+            end)
+            print("[款脚本] 你当前的位置: " .. positionText)
+        end
+    })
+
+    -- 测试人员专属：仅影响本地看到的头衔特效，不会远程修改其他玩家客户端。
+    sectionRegion:Toggle({
+        Name = "本地限制低等级头衔特效",
+        Value = false,
+        Callback = function(v)
+            restrictLowRankTagEffects = v
+            refreshAllTags()
+        end
+    })
+end
+
+-- 测试官和作者的聊天“开/关”权限独立于测试人员区域管理。
+-- “开”会显示本地客户端可识别的其他脚本用户头衔；“关”则隐藏。
+if getRank(LocalPlayer.Name) >= 2 then
+    local sectionOfficer = tabPerm:Section({
+        Name = "测试官与作者权限",
+        SubName = "头衔显示管理",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionOfficer:Button({
+        Name = "刷新玩家头衔显示",
+        Callback = function()
+            showOtherTagsEnabled = true
+            allowLowRankTagsEnabled = true
+            refreshAllTags()
+        end
+    })
+    sectionOfficer:Button({
+        Name = "关闭其他玩家头衔显示",
+        Callback = function()
+            showOtherTagsEnabled = false
+            allowLowRankTagsEnabled = false
+            refreshAllTags()
+        end
+    })
+
+    -- 请求目标离开：目标也必须运行配套款脚本，接收端才会自动同意并退出。
+    local leaveRequestTarget = ""
+    local sectionLeaveRequest = tabPerm:Section({
+        Name = "请求玩家离开",
+        SubName = "对方运行配套脚本时自动同意",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionLeaveRequest:Textbox({
+        Name = "输入目标 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) leaveRequestTarget = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    sectionLeaveRequest:Button({
+        Name = "发送离开请求",
+        Callback = function()
+            if leaveRequestTarget == "" then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "请先输入用户名。", Duration = 4}) end)
+                return
+            end
+            local target = Players:FindFirstChild(leaveRequestTarget)
+            if not target then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "当前服务器找不到该玩家。", Duration = 4}) end)
+                return
+            end
+            if target == LocalPlayer or getRank(target.Name) >= getRank(LocalPlayer.Name) then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "只能请求等级低于自己的玩家。", Duration = 4}) end)
+                return
+            end
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            local channel = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+            if not channel then
+                pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "聊天频道不可用，无法发送请求。", Duration = 4}) end)
+                return
+            end
+            local payload = LEAVE_REQUEST_PREFIX .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
+            local ok = pcall(function() channel:SendAsync(payload) end)
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = ok and ("已向 " .. target.Name .. " 发送请求；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+        end
+    })
+
+    -- 黑屏与恢复：通过聊天向目标发送指令，目标需运行配套脚本。
+    local blackoutTargetName = ""
+    local sectionBlackout = tabPerm:Section({
+        Name = "玩家屏幕管理",
+        SubName = "向低等级配套脚本用户发送黑屏/恢复指令",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionBlackout:Textbox({
+        Name = "输入目标 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) blackoutTargetName = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    local function sendScreenCommand(prefix, title, actionText)
+        if blackoutTargetName == "" then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "请先输入用户名。", Duration = 4}) end)
+            return
+        end
+        local target = Players:FindFirstChild(blackoutTargetName)
+        if not target then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "当前服务器找不到该玩家。", Duration = 4}) end)
+            return
+        end
+        if target == LocalPlayer or getRank(target.Name) >= getRank(LocalPlayer.Name) then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "只能操作等级低于自己的玩家。", Duration = 4}) end)
+            return
+        end
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        local channel = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+        if not channel then
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "聊天频道不可用，无法发送指令。", Duration = 4}) end)
+            return
+        end
+        local payload = prefix .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
+        local ok = pcall(function() channel:SendAsync(payload) end)
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+    end
+    sectionBlackout:Button({Name = "请求对方黑屏", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
+    sectionBlackout:Button({Name = "请求对方恢复屏幕", Callback = function() sendScreenCommand(RESTORE_REQUEST_PREFIX, "恢复屏幕", "已向 ") end})
+
+    -- 黑名单管理：本地保存并在本机启动脚本时检查；不具备跨客户端同步能力。
+    local blacklistInputName = ""
+    local sectionBlacklist = tabPerm:Section({
+        Name = "款脚本黑名单",
+        SubName = "添加或移除本地黑名单记录",
+        Logo = "83701039519151",
+        Collapsible = true,
+        Collapsed = true
+    })
+    sectionBlacklist:Textbox({
+        Name = "输入玩家 Roblox 用户名",
+        Placeholder = "请输入准确用户名",
+        Callback = function(v) blacklistInputName = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
+    })
+    local function notifyBlacklist(message)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "款脚本黑名单", Text = message, Duration = 4
+            })
+        end)
+        print("[款脚本黑名单] " .. message)
+    end
+    sectionBlacklist:Button({
+        Name = "添加到黑名单",
+        Callback = function()
+            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
+            if isScriptBlacklisted(blacklistInputName) then notifyBlacklist(blacklistInputName .. " 已在本地黑名单中。"); return end
+            table.insert(SCRIPT_BLACKLIST, blacklistInputName)
+            local saved = saveScriptBlacklist()
+            notifyBlacklist("已记录 " .. blacklistInputName .. (saved and "（已尝试保存到本机）" or "（当前执行器不支持文件保存，仅本次运行有效）"))
+        end
+    })
+    sectionBlacklist:Button({
+        Name = "从黑名单移除",
+        Callback = function()
+            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
+            local wanted = string.lower(blacklistInputName)
+            local removed = false
+            for i = #SCRIPT_BLACKLIST, 1, -1 do
+                if string.lower(SCRIPT_BLACKLIST[i]) == wanted then
+                    table.remove(SCRIPT_BLACKLIST, i)
+                    removed = true
+                end
+            end
+            if removed then
+                saveScriptBlacklist()
+                notifyBlacklist("已从本地黑名单移除 " .. blacklistInputName .. "。")
+            else
+                notifyBlacklist("名单中没有这个用户名。")
+            end
+        end
+    })
+    sectionBlacklist:Button({
+        Name = "查看本地黑名单",
+        Callback = function()
+            if #SCRIPT_BLACKLIST == 0 then notifyBlacklist("当前本地黑名单为空。")
+            else notifyBlacklist("本地名单：" .. table.concat(SCRIPT_BLACKLIST, ", ")) end
+        end
+    })
+end
 
     local tabCommon = Soundify(Window:Tab("通用", "83701039519151"))
 
@@ -2021,388 +2380,16 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
             end
         end
 
-        local egg1State = { unlocked = false }
         local egg2State = { unlocked = false }
-        local EGG1_FILE = "KuanScript/Egg1Unlocked.txt"
         local EGG2_FILE = "KuanScript/Egg2Unlocked.txt"
         pcall(function()
-            if isfile and isfile(EGG1_FILE) then egg1State.unlocked = true end
             if isfile and isfile(EGG2_FILE) then egg2State.unlocked = true end
         end)
-        
+
         local eggTabCreated = false
         local eggSecRef = nil
-        local egg1BtnAdded = false
         local egg2BtnAdded = false
-
-        local addEgg1Button, addEgg2Button, ensureEggTab
-
-        addEgg1Button = function()
-            if egg1BtnAdded or not eggSecRef or not egg1State.unlocked then return end
-            egg1BtnAdded = true
-            pcall(function()
-                eggSecRef:Button({ Name = "清除所有传送门", Callback = function()
-                    local count = 0
-                    for _, obj in ipairs(workspace:GetChildren()) do
-                        if obj:IsA("Model") and obj.Name == "EpicVoidPortal" then
-                            obj:Destroy()
-                            count = count + 1
-                        end
-                    end
-                    pcall(function()
-                        game:GetService("StarterGui"):SetCore("SendNotification", {
-                            Title = "传送枪",
-                            Text = count > 0 and ("已清除 " .. count .. " 个传送门") or "当前没有传送门",
-                            Duration = 3,
-                        })
-                    end)
-                end })
-                
-                eggSecRef:Button({ Name = "彩蛋一 (传送枪)", Callback = function()
-                    local VOID_POSITION = Vector3.new(8000, 10, 8000)
-                    local isTransitioning = false
-                    local originalPosition = nil
-                    local isEquipped = false
-                    local voidGenerated = false
-                    local runeCore = nil
-                    local floatingRunes = {}
-                    local UIS2 = game:GetService("UserInputService")
-                    local camera2 = workspace.CurrentCamera
-
-                    local function generateVoidTerrain()
-                        if voidGenerated then return end
-                        voidGenerated = true
-                        local mineModel = Instance.new("Model")
-                        mineModel.Name = "SafeMine"
-                        local baseFloor = Instance.new("Part")
-                        baseFloor.Size = Vector3.new(4000, 100, 4000)
-                        baseFloor.Position = VOID_POSITION - Vector3.new(0, 50, 0)
-                        baseFloor.Anchored = true
-                        baseFloor.Material = Enum.Material.Slate
-                        baseFloor.Color = Color3.fromRGB(10, 10, 12)
-                        baseFloor.CanCollide = true
-                        baseFloor.Parent = mineModel
-                        local gridSize = 400
-                        for x = -2, 1 do
-                            for z = -2, 1 do
-                                local tile = Instance.new("Part")
-                                tile.Size = Vector3.new(gridSize, 40, gridSize)
-                                tile.Position = VOID_POSITION + Vector3.new(x * gridSize + gridSize/2, -20, z * gridSize + gridSize/2)
-                                tile.Anchored = true
-                                tile.Material = Enum.Material.Slate
-                                tile.Color = Color3.fromRGB(25, 25, 30)
-                                tile.CanCollide = true
-                                tile.Parent = mineModel
-                                local line = Instance.new("Part")
-                                line.Size = Vector3.new(gridSize - 4, 1, 8)
-                                line.Position = tile.Position + Vector3.new(0, 20.5, gridSize/2)
-                                line.Anchored = true
-                                line.Material = Enum.Material.Neon
-                                line.Color = Color3.fromRGB(0, 150, 255)
-                                line.Parent = mineModel
-                                local line2 = Instance.new("Part")
-                                line2.Size = Vector3.new(8, 1, gridSize - 4)
-                                line2.Position = tile.Position + Vector3.new(gridSize/2, 20.5, 0)
-                                line2.Anchored = true
-                                line2.Material = Enum.Material.Neon
-                                line2.Color = Color3.fromRGB(0, 150, 255)
-                                line2.Parent = mineModel
-                            end
-                        end
-                        local boxSize = 400
-                        local radius = 2000
-                        local ceilingHeight = 400
-                        for x = -radius, radius, boxSize do
-                            for z = -radius, radius, boxSize do
-                                local roofBlock = Instance.new("Part")
-                                roofBlock.Size = Vector3.new(boxSize, 100, boxSize)
-                                roofBlock.Position = VOID_POSITION + Vector3.new(x, ceilingHeight, z)
-                                roofBlock.Anchored = true
-                                roofBlock.Material = Enum.Material.Rock
-                                roofBlock.Color = Color3.fromRGB(0, 0, 0)
-                                roofBlock.CanCollide = true
-                                roofBlock.CastShadow = false
-                                roofBlock.Parent = mineModel
-                            end
-                        end
-                        for i = 1, 4 do
-                            for x = -radius, radius, boxSize do
-                                for y = 0, ceilingHeight, boxSize do
-                                    local wallBlock = Instance.new("Part")
-                                    wallBlock.Size = Vector3.new(boxSize, boxSize, 200)
-                                    wallBlock.CFrame = CFrame.new(VOID_POSITION) * CFrame.Angles(0, math.rad(i * 90), 0) * CFrame.new(x, y, -radius)
-                                    wallBlock.Anchored = true
-                                    wallBlock.Material = Enum.Material.Rock
-                                    wallBlock.Color = Color3.fromRGB(0, 0, 0)
-                                    wallBlock.CanCollide = true
-                                    wallBlock.CastShadow = false
-                                    wallBlock.Parent = mineModel
-                                end
-                            end
-                        end
-                        local altarModel = Instance.new("Model")
-                        altarModel.Parent = mineModel
-                        local numSteps = 5
-                        local baseSize = 240
-                        local stepHeight = 4
-                        local stepDepth = 24
-                        for i = 1, numSteps do
-                            local step = Instance.new("Part")
-                            step.Size = Vector3.new(baseSize - (i-1)*stepDepth*2, stepHeight, baseSize - (i-1)*stepDepth*2)
-                            step.Position = VOID_POSITION + Vector3.new(0, (i * stepHeight) - (stepHeight / 2), 0)
-                            step.Anchored = true
-                            step.Material = Enum.Material.Slate
-                            step.Color = Color3.fromRGB(20, 25, 35)
-                            step.CanCollide = true
-                            step.Parent = altarModel
-                            local edgeLine = Instance.new("Part")
-                            edgeLine.Size = Vector3.new(step.Size.X - 2, 0.5, step.Size.Z - 2)
-                            edgeLine.Position = VOID_POSITION + Vector3.new(0, i * stepHeight + 0.25, 0)
-                            edgeLine.Anchored = true
-                            edgeLine.Material = Enum.Material.Neon
-                            edgeLine.Color = Color3.fromRGB(0, 150, 255)
-                            edgeLine.CanCollide = false
-                            edgeLine.Parent = altarModel
-                        end
-                        runeCore = Instance.new("Part")
-                        runeCore.Shape = Enum.PartType.Ball
-                        runeCore.Size = Vector3.new(50, 50, 50)
-                        runeCore.Position = VOID_POSITION + Vector3.new(0, numSteps * stepHeight + 40, 0)
-                        runeCore.Anchored = true
-                        runeCore.Material = Enum.Material.Neon
-                        runeCore.Color = Color3.fromRGB(0, 200, 255)
-                        runeCore.CanCollide = true
-                        runeCore.Parent = altarModel
-                        local coreLight = Instance.new("PointLight")
-                        coreLight.Color = Color3.fromRGB(0, 200, 255)
-                        coreLight.Range = 200
-                        coreLight.Brightness = 4
-                        coreLight.Parent = runeCore
-                        for i = 1, 6 do
-                            local runeStone = Instance.new("Part")
-                            runeStone.Size = Vector3.new(15, 30, 15)
-                            runeStone.Anchored = true
-                            runeStone.Material = Enum.Material.Basalt
-                            runeStone.Color = Color3.fromRGB(5, 5, 8)
-                            runeStone.CanCollide = true
-                            runeStone.Parent = altarModel
-                            table.insert(floatingRunes, { part = runeStone, angleOffset = (i / 6) * math.pi * 2, height = numSteps * stepHeight + 40 + math.random(-20, 20) })
-                        end
-                        local function createCrystalCluster(basePos, sizeMultiplier, isCeiling)
-                            local cluster = Instance.new("Model")
-                            cluster.Parent = mineModel
-                            local numCrystals = math.random(3, 5)
-                            for i = 1, numCrystals do
-                                local crystal = Instance.new("Part")
-                                crystal.Shape = Enum.PartType.Cylinder
-                                local cRadius = math.random(6, 12) * sizeMultiplier
-                                local cHeight = math.random(25, 55) * sizeMultiplier
-                                crystal.Size = Vector3.new(cHeight, cRadius, cRadius)
-                                local offsetX = math.random(-40, 40) * sizeMultiplier
-                                local offsetZ = math.random(-40, 40) * sizeMultiplier
-                                local targetCFrame
-                                if not isCeiling then
-                                    local targetY = basePos.Y + (cHeight / 2) - 2
-                                    targetCFrame = CFrame.new(Vector3.new(basePos.X + offsetX, targetY, basePos.Z + offsetZ)) * CFrame.Angles(0, 0, math.rad(90)) * CFrame.Angles(math.rad(math.random(-25, 25)), math.rad(math.random(-25, 25)), math.rad(math.random(-25, 25)))
-                                else
-                                    local targetY = basePos.Y - (cHeight / 2) + 2
-                                    targetCFrame = CFrame.new(Vector3.new(basePos.X + offsetX, targetY, basePos.Z + offsetZ)) * CFrame.Angles(math.rad(180), 0, math.rad(90)) * CFrame.Angles(math.rad(math.random(-25, 25)), math.rad(math.random(-25, 25)), math.rad(math.random(-25, 25)))
-                                end
-                                crystal.CFrame = targetCFrame
-                                crystal.Anchored = true
-                                crystal.Material = Enum.Material.Neon
-                                crystal.Color = Color3.fromRGB(0, 150, 200)
-                                crystal.CanCollide = true
-                                crystal.Parent = cluster
-                            end
-                        end
-                        for i = 1, 80 do
-                            local angle = math.random() * math.pi * 2
-                            local dist = math.random(300, 1700)
-                            local spawnPos = VOID_POSITION + Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist)
-                            createCrystalCluster(spawnPos, math.random(1, 2), false)
-                        end
-                        for i = 1, 100 do
-                            local angle = math.random() * math.pi * 2
-                            local dist = math.random(150, 1800)
-                            local spawnPos = VOID_POSITION + Vector3.new(math.cos(angle) * dist, ceilingHeight - 20, math.sin(angle) * dist)
-                            createCrystalCluster(spawnPos, math.random(1.2, 2.5), true)
-                        end
-                        mineModel.Parent = workspace
-                        RunService.RenderStepped:Connect(function()
-                            local time = tick()
-                            if runeCore and runeCore.Parent then
-                                runeCore.CFrame = CFrame.new(runeCore.Position) * CFrame.Angles(time, time * 0.8, 0)
-                            end
-                            for _, data in ipairs(floatingRunes) do
-                                if data.part and data.part.Parent then
-                                    local a = data.angleOffset + (time * 0.5)
-                                    local x = VOID_POSITION.X + math.cos(a) * 150
-                                    local z = VOID_POSITION.Z + math.sin(a) * 150
-                                    data.part.CFrame = CFrame.new(x, data.height, z) * CFrame.Angles(time * 2, time * 2, 0)
-                                end
-                            end
-                        end)
-                    end
-
-                    local function createEpicPortal(spawnPos, lookAtPos, targetIsVoid)
-                        local model = Instance.new("Model")
-                        model.Name = "EpicVoidPortal"
-                        local pCFrame = CFrame.lookAt(spawnPos, Vector3.new(lookAtPos.X, spawnPos.Y, lookAtPos.Z))
-                        local ringParts = {}
-                        local nodeCount = 36
-                        local ringRadius = 6.5
-                        for i = 1, nodeCount do
-                            local node = Instance.new("Part")
-                            node.Size = Vector3.new(1.2, 2.5, 0.3)
-                            node.Color = Color3.fromRGB(0, 200, 255)
-                            node.Material = Enum.Material.Neon
-                            node.Anchored = true
-                            node.CanCollide = false
-                            node.Parent = model
-                            table.insert(ringParts, node)
-                        end
-                        local innerField = Instance.new("Part")
-                        innerField.Shape = Enum.PartType.Cylinder
-                        innerField.Size = Vector3.new(0.1, 12.5, 12.5)
-                        innerField.CFrame = pCFrame * CFrame.Angles(0, math.rad(90), 0)
-                        innerField.Color = Color3.fromRGB(0, 0, 0)
-                        innerField.Material = Enum.Material.SmoothPlastic
-                        innerField.Transparency = 0.3
-                        innerField.Anchored = true
-                        innerField.CanCollide = false
-                        innerField.Parent = model
-                        model.Parent = workspace
-                        local hitbox = Instance.new("Part")
-                        hitbox.Name = "Hitbox"
-                        hitbox.Size = Vector3.new(10, 10, 4)
-                        hitbox.CFrame = pCFrame
-                        hitbox.Transparency = 1
-                        hitbox.Anchored = true
-                        hitbox.CanCollide = false
-                        hitbox.Parent = model
-                        model.PrimaryPart = hitbox
-                        local time = 0
-                        RunService.RenderStepped:Connect(function(dt)
-                            if not model.Parent then return end
-                            time = time + dt
-                            local pulse = 1 + math.sin(time * 5) * 0.05
-                            for i, node in ipairs(ringParts) do
-                                local angle = (i / nodeCount) * math.pi * 2 + (time * 2)
-                                local offset = pCFrame.RightVector * (math.cos(angle) * (ringRadius * pulse)) + pCFrame.UpVector * (math.sin(angle) * (ringRadius * pulse))
-                                node.CFrame = CFrame.lookAt(pCFrame.Position + offset, pCFrame.Position) * CFrame.Angles(0, math.rad(90), 0)
-                            end
-                        end)
-                        local db = false
-                        hitbox.Touched:Connect(function(hit)
-                            if hit.Parent == LocalPlayer.Character and not db and not isTransitioning then
-                                db = true
-                                isTransitioning = true
-                                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                                if hrp then
-                                    if targetIsVoid then
-                                        originalPosition = hrp.CFrame
-                                        hrp.CFrame = CFrame.new(VOID_POSITION + Vector3.new(0, 10, 300))
-                                    else
-                                        if originalPosition then
-                                            hrp.CFrame = originalPosition
-                                        else
-                                            local spawn = workspace:FindFirstChildOfClass("SpawnLocation")
-                                            if spawn then
-                                                hrp.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-                                            else
-                                                hrp.CFrame = CFrame.new(0, 10, 0)
-                                            end
-                                        end
-                                    end
-                                end
-                                task.wait(1)
-                                isTransitioning = false
-                                db = false
-                            end
-                        end)
-                        return model
-                    end
-
-                    local character = LocalPlayer.Character
-                    if not character then return end
-                    generateVoidTerrain()
-                    local backpack = LocalPlayer:WaitForChild("Backpack")
-                    for _, v in pairs(character:GetChildren()) do
-                        if v:IsA("Tool") or v.Name == "PortalGun" then v:Destroy() end
-                    end
-                    for _, v in pairs(backpack:GetChildren()) do
-                        if v:IsA("Tool") then v:Destroy() end
-                    end
-                    local tool = Instance.new("Tool")
-                    tool.Name = "PortalGun"
-                    tool.RequiresHandle = true
-                    tool.CanBeDropped = false
-                    tool.Parent = backpack
-                    local handle = Instance.new("Part")
-                    handle.Name = "Handle"
-                    handle.Size = Vector3.new(0.2, 0.4, 0.3)
-                    handle.Transparency = 1
-                    handle.CanCollide = false
-                    handle.Parent = tool
-                    local function build(shape, size, cf, color, mat)
-                        local p = Instance.new("Part")
-                        p.Shape = shape or Enum.PartType.Block
-                        p.Size = size
-                        p.CFrame = handle.CFrame * cf
-                        p.Color = color
-                        p.Material = mat or Enum.Material.SmoothPlastic
-                        p.CanCollide = false
-                        p.Massless = true
-                        local w = Instance.new("WeldConstraint")
-                        w.Part0 = handle
-                        w.Part1 = p
-                        w.Parent = p
-                        p.Parent = tool
-                    end
-                    local C_WHITE = Color3.fromRGB(220, 220, 225)
-                    local C_BLACK = Color3.fromRGB(20, 20, 25)
-                    local C_CYAN = Color3.fromRGB(0, 255, 255)
-                    build(Enum.PartType.Block, Vector3.new(0.35, 0.35, 0.8), CFrame.new(0, 0.15, -0.4), C_WHITE)
-                    build(Enum.PartType.Block, Vector3.new(0.2, 0.3, 0.3), CFrame.new(0, -0.1, -0.2), C_BLACK)
-                    build(Enum.PartType.Block, Vector3.new(0.45, 0.45, 0.05), CFrame.new(0, 0.15, -0.85), C_BLACK)
-                    for i = -1, 1 do
-                        for j = -1, 1 do
-                            build(Enum.PartType.Block, Vector3.new(0.06, 0.06, 0.02), CFrame.new(i * 0.1, 0.15 + (j * 0.1), -0.88), C_CYAN, Enum.Material.Neon)
-                        end
-                    end
-                    build(Enum.PartType.Cylinder, Vector3.new(0.15, 0.12, 0.12), CFrame.new(0, 0.35, 0.15) * CFrame.Angles(0, 0, math.rad(90)), C_CYAN, Enum.Material.Neon)
-                    tool.Grip = CFrame.new(0, -0.2, -0.3)
-                    tool.Equipped:Connect(function() isEquipped = true end)
-                    tool.Unequipped:Connect(function() isEquipped = false end)
-                    UIS2.InputBegan:Connect(function(input, gameProcessed)
-                        if gameProcessed or not isEquipped or isTransitioning then return end
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                            local hrp = character:FindFirstChild("HumanoidRootPart")
-                            if not hrp then return end
-                            if hrp.Position.X > 7000 then
-                                local front = hrp.CFrame.LookVector * 8
-                                local spawnPos = hrp.Position + front
-                                createEpicPortal(spawnPos, hrp.Position, false)
-                            else
-                                local mousePos = UIS2:GetMouseLocation()
-                                local unitRay = camera2:ViewportPointToRay(mousePos.X, mousePos.Y)
-                                local params = RaycastParams.new()
-                                params.FilterDescendantsInstances = {character, tool}
-                                params.FilterType = Enum.RaycastFilterType.Exclude
-                                local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
-                                if result then
-                                    local spawnPos = result.Position + (result.Normal * 6.5) + Vector3.new(0, 2, 0)
-                                    createEpicPortal(spawnPos, hrp.Position, true)
-                                end
-                            end
-                        end
-                    end)
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then humanoid:EquipTool(tool) end
-                end })
-            end)
-        end
+        local addEgg2Button, ensureEggTab
 
         addEgg2Button = function()
             if egg2BtnAdded or not eggSecRef or not egg2State.unlocked then return end
@@ -2416,7 +2403,6 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
 
         ensureEggTab = function()
             if eggTabCreated and eggSecRef then
-                if egg1State.unlocked then addEgg1Button() end
                 if egg2State.unlocked then addEgg2Button() end
                 return
             end
@@ -2431,16 +2417,15 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
                 })
                 eggSecRef = eggSec
                 eggTabCreated = true
-                if egg1State.unlocked then addEgg1Button() end
                 if egg2State.unlocked then addEgg2Button() end
             end)
         end
 
-        if egg1State.unlocked or egg2State.unlocked then
+        if egg2State.unlocked then
             task.defer(ensureEggTab)
         end
 
-        local shouldShowVerify = not (egg1State.unlocked and egg2State.unlocked)
+        local shouldShowVerify = not egg2State.unlocked
         local sectionVerify = nil
         local verifyValue = ""
         local verifyInput = nil
@@ -2474,7 +2459,7 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
         end
 
         local function hideVerifyIfBothUnlocked()
-            if egg1State.unlocked and egg2State.unlocked and sectionVerify then
+            if egg2State.unlocked and sectionVerify then
                 pcall(function() sectionVerify:Destroy() end)
                 pcall(function() if sectionVerify.Container then sectionVerify.Container.Visible = false end end)
                 pcall(function() if sectionVerify.Parent then sectionVerify.Parent.Visible = false end end)
@@ -2494,7 +2479,7 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
             end
         end
 
-        if egg1State.unlocked and egg2State.unlocked then
+        if egg2State.unlocked then
             task.defer(hideVerifyIfBothUnlocked)
         end
 
@@ -2554,22 +2539,7 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
             yesBtn.MouseButton1Click:Connect(function()
                 pcall(function() gui:Destroy() end)
 
-                if not egg1State.unlocked then
-                    egg1State.unlocked = true
-                    ensureEggTab()
-                    addEgg1Button()
-                    pcall(function()
-                        if writefile then
-                            if isfolder and makefolder and not isfolder("KuanScript") then makefolder("KuanScript") end
-                            writefile(EGG1_FILE, "1")
-                        end
-                    end)
-                    pcall(function()
-                        game:GetService("StarterGui"):SetCore("SendNotification", {
-                            Title = "彩蛋一", Text = "解锁成功！彩蛋页多出传送枪", Duration = 6,
-                        })
-                    end)
-                elseif not egg2State.unlocked then
+                if not egg2State.unlocked then
                     egg2State.unlocked = true
                     ensureEggTab()
                     addEgg2Button()
@@ -2581,7 +2551,7 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
                     end)
                     pcall(function()
                         game:GetService("StarterGui"):SetCore("SendNotification", {
-                            Title = "彩蛋二", Text = "解锁成功！彩蛋页多出五子棋", Duration = 6,
+                            Title = "五子棋彩蛋", Text = "解锁成功！彩蛋页已添加五子棋", Duration = 6,
                         })
                     end)
                 end
@@ -2607,10 +2577,10 @@ sectionOther:Button({ Name = "叶脚本", Callback = function() loadstring(game:
                     return
                 end
 
-                if egg1State.unlocked and egg2State.unlocked then
+                if egg2State.unlocked then
                     pcall(function()
                         game:GetService("StarterGui"):SetCore("SendNotification", {
-                            Title = "彩蛋", Text = "两个彩蛋都已解锁。", Duration = 3,
+                            Title = "彩蛋", Text = "五子棋彩蛋已解锁。", Duration = 3,
                         })
                     end)
                     return
