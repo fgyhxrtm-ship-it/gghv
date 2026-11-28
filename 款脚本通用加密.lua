@@ -167,21 +167,39 @@ _G.KuanScriptUsers = ScriptUsers
 _G.KuanRefreshTags = nil
 
 local ADMIN_LIST   = { "huwen97", "KuaishouKuan2", "mj_676711451467", "XHZY_SHZYZJ",   "thmost1", "WUyangXxX", "sysy78NB", "aa1360051" }
-local TESTER_LIST  = { "ctyccttvyvv", "Noobplayer4523XD", "wR1P84" }
-local AUTHOR_LIST  = { "fuhgtdtfftxrvfhf", "dhjhcxgjk" }
+-- 权限名单同步自“踢人黑屏黑名单版”：作者 3、测试官 2、测试人员 1
+local AUTHOR_LIST = {
+    "fuhgtdtfftxrvfhf",
+    "dhjhcxgjk",
+}
+local TEST_OFFICER_LIST = {
+    "ctyccttvyvv",
+    "Noobplayer4523XD",
+    "wR1P84",
+}
+local TESTER_LIST = {
+    "huwen97",
+    "KuaishouKuan2",
+    "mj_676711451467",
+    "XHZY_SHZYZJ",
+    "thmost1",
+    "WUyangXxX",
+    "sysy78NB",
+    "aa1360051",
+}
 
 local function inList(list, name)
-    local lowerName = string.lower(name)
+    local wanted = string.lower(tostring(name or ""))
     for _, v in ipairs(list) do
-        if string.lower(v) == lowerName then return true end
+        if string.lower(v) == wanted then return true end
     end
     return false
 end
 
 local function getRank(name)
     if inList(AUTHOR_LIST, name) then return 3 end
-    if inList(TESTER_LIST, name) then return 2 end
-    if inList(ADMIN_LIST,  name) then return 1 end
+    if inList(TEST_OFFICER_LIST, name) then return 2 end
+    if inList(TESTER_LIST, name) then return 1 end
     return 0
 end
 
@@ -499,53 +517,59 @@ local function refreshAllTags()
 end
 _G.KuanRefreshTags = refreshAllTags
 
--- 高等级管理成员加入时，向等级低于加入者的本地玩家显示系统欢迎消息
+-- 低等级玩家加入时：如果本地玩家等级更高，则在本地聊天框欢迎该玩家。
+-- 例如作者会欢迎测试官/测试人员/普通用户；测试官会欢迎测试人员/普通用户。
 local welcomedJoiners = {}
+
+local function showChatWelcome(player)
+    local welcomeText = "欢迎 " .. player.Name .. " 加入游戏！"
+
+    task.spawn(function()
+        -- 新版聊天系统：等待 RBXGeneral 频道就绪后发送本地系统消息。
+        for _ = 1, 20 do
+            local displayed = false
+            pcall(function()
+                if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                    local channels = TextChatService:FindFirstChild("TextChannels")
+                    local channel = channels and (
+                        channels:FindFirstChild("RBXGeneral")
+                        or channels:FindFirstChildWhichIsA("TextChannel")
+                    )
+                    if channel then
+                        channel:DisplaySystemMessage(welcomeText)
+                        displayed = true
+                    end
+                else
+                    -- 旧版聊天系统：系统消息直接显示在聊天窗口。
+                    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+                        Text = welcomeText,
+                        Color = Color3.fromRGB(120, 255, 150),
+                        Font = Enum.Font.SourceSansBold,
+                        TextSize = 18
+                    })
+                    displayed = true
+                end
+            end)
+            if displayed then return end
+            task.wait(0.5)
+        end
+
+        warn("[款脚本] 聊天欢迎消息发送失败：" .. player.Name)
+    end)
+end
 
 local function showRankWelcomeMessage(player)
     if not player or player == LocalPlayer then return end
 
     local joiningRank = getRank(player.Name)
     local localRank = getRank(LocalPlayer.Name)
-    if joiningRank < 2 or localRank >= joiningRank then return end
+
+    -- 只欢迎比自己等级低的加入者；同级或更高级玩家不触发。
+    if joiningRank >= localRank then return end
     if welcomedJoiners[player.UserId] then return end
     welcomedJoiners[player.UserId] = true
 
-    local welcomeText
-    if joiningRank == 3 then
-        welcomeText = "欢迎款脚本作者加入游戏！"
-    elseif joiningRank == 2 then
-        welcomeText = "欢迎测试官加入游戏！"
-    else
-        return
-    end
-
-    task.spawn(function()
-        -- 优先在聊天窗口显示系统消息；若当前聊天频道不可用，则退回系统通知。
-        local displayed = false
-        for _ = 1, 8 do
-            local ok = pcall(function()
-                local channels = TextChatService:FindFirstChild("TextChannels")
-                local generalChannel = channels and channels:FindFirstChild("RBXGeneral")
-                if generalChannel then
-                    generalChannel:DisplaySystemMessage(welcomeText)
-                    displayed = true
-                end
-            end)
-            if displayed then break end
-            task.wait(0.5)
-        end
-
-        if not displayed then
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "系统消息",
-                    Text = welcomeText,
-                    Duration = 5
-                })
-            end)
-        end
-    end)
+    showChatWelcome(player)
 end
 
 local function onPlayerJoin(player)
@@ -568,8 +592,15 @@ local function onPlayerJoin(player)
 end
 
 Players.PlayerAdded:Connect(onPlayerJoin)
-for _, player in ipairs(Players:GetPlayers()) do task.spawn(function() onPlayerJoin(player) end) end
-Players.PlayerRemoving:Connect(function(player) clearTag(player) end)
+for _, player in ipairs(Players:GetPlayers()) do
+    task.spawn(function()
+        onPlayerJoin(player)
+    end)
+end
+Players.PlayerRemoving:Connect(function(player)
+    welcomedJoiners[player.UserId] = nil
+    clearTag(player)
+end)
 
 -- 仅测试官和作者可在聊天中输入“开/关”切换其他脚本用户头衔。
 local function handleTagVisibilityCommand(message)
@@ -1856,15 +1887,9 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/JsYb666/Item/refs/hea
     local tabMusic = Soundify(Window:Tab("音乐", "83701039519151"))
 local sectionHall = tabMusic:Section({ Name = "音乐大厅", SubName = "推荐音乐", Logo = "83701039519151", Collapsible = true, Collapsed = true })
 local musicLibrary = {
-    {name = "雨爱", id = "rbxassetid://79277371759525"},
-    {name = "起风了", id = "rbxassetid://99498025749186"},
-    {name = "鸟之诗", id = "rbxassetid://113665010217108"},
-    {name = "唯一", id = "rbxassetid://138570939058838"},
     {name = "认清现实", id = "rbxassetid://136847919947471"},
-    {name = "植物大战僵尸", id = "rbxassetid://75726877618550"},
     {name = "Passo bem solto", id = "rbxassetid://106185171358009"},
     {name = "循环小曲", id = "rbxassetid://116273924154778"},
-    {name = "Best Friend Remix", id = "rbxassetid://86857426956968"},
     {name = "索尼克EXE", id = "rbxassetid://131415306381990"},
     {name = "Unhappy", id = "rbxassetid://88523902860927"},
     {name = "凤凰", id = "rbxassetid://77715601943266"},
@@ -1883,7 +1908,6 @@ local sectionBattle = tabMusic:Section({ Name = "一些梗音效", SubName = "�
 local battleSounds = {
     {name = "乌鲁鲁", id = "rbxassetid://80701295792893"},
     {name = "关注塔菲谢谢喵", id = "rbxassetid://126774078187195"},
-    {name = "大东北", id = "rbxassetid://134786908423441"},
     {name = "骷髅敲盾", id = "rbxassetid://109255721227659"},
     {name = "🧊🧊🧊", id = "rbxassetid://118192325368354"},
     {name = "叹气", id = "rbxassetid://88227888377765"},
