@@ -58,7 +58,52 @@ local TextChatService  = game:GetService("TextChatService")
 local TweenService     = game:GetService("TweenService")
 local LocalPlayer      = Players.LocalPlayer
 local HttpService      = game:GetService("HttpService")
+
 local SoundService     = game:GetService("SoundService")
+
+-- 将其他玩家发来的欢迎聊天统一整理为“欢迎玩家名”。
+-- 只改本客户端收到的公开聊天显示，不会向全服重发消息。
+local function normalizeIncomingWelcome(message)
+    if not message then return nil end
+    local original = tostring(message.Text or "")
+    local lowerText = string.lower(original)
+    local hasWelcome = original:find("欢迎", 1, true) ~= nil
+        or lowerText:find("welcome", 1, true) ~= nil
+    if not hasWelcome then return nil end
+
+    local targetName
+    -- 优先从消息中匹配当前服务器里的真实玩家名，避免保留乱码或装饰字符。
+    for _, candidate in ipairs(Players:GetPlayers()) do
+        if original:find(candidate.Name, 1, true) then
+            targetName = candidate.Name
+            break
+        end
+    end
+
+    -- 如果消息没有写出被欢迎者，退回到消息发送者名称。
+    if not targetName and message.TextSource then
+        local sender = Players:GetPlayerByUserId(message.TextSource.UserId)
+        if sender then targetName = sender.Name end
+    end
+    if not targetName then return nil end
+    return "欢迎" .. targetName
+end
+
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    local previousIncomingFormatter = TextChatService.OnIncomingMessage
+    TextChatService.OnIncomingMessage = function(message)
+        local properties
+        if previousIncomingFormatter then
+            local ok, result = pcall(previousIncomingFormatter, message)
+            if ok then properties = result end
+        end
+        local normalized = normalizeIncomingWelcome(message)
+        if not normalized then return properties end
+        properties = properties or Instance.new("TextChatMessageProperties")
+        properties.Text = normalized
+        return properties
+    end
+end
 
 local Window = nil
 local START_SOUND_ID = "17687850030"
