@@ -517,7 +517,7 @@ _G.KuanRefreshTags = refreshAllTags
 local welcomedJoiners = {}
 
 local function showChatWelcome(player)
-    local welcomeText = "欢迎 " .. player.Name .. " 加入游戏！"
+    local welcomeText = "欢迎" .. player.Name
 
     task.spawn(function()
         -- 新版聊天系统：等待 RBXGeneral 频道就绪后发送本地系统消息。
@@ -556,12 +556,9 @@ end
 local function showRankWelcomeMessage(player)
     if not player or player == LocalPlayer then return end
 
-    if activeScriptUsers[player.UserId] ~= true then return end
+    -- 作者本人不显示欢迎；作者以下所有等级（测试官、测试人员、普通玩家）均显示。
     local joiningRank = getRank(player.Name)
-    local localRank = getRank(LocalPlayer.Name)
-
-    -- 只欢迎已启动款脚本、且等级低于本地玩家的加入者。
-    if joiningRank >= localRank then return end
+    if joiningRank >= 3 then return end
     if welcomedJoiners[player.UserId] then return end
     welcomedJoiners[player.UserId] = true
 
@@ -647,7 +644,7 @@ end
 
 local blackoutGui = nil
 local blackoutToken = 0
-local allowRemoteBlackout = false
+
 local kickCountdownActive = false
 
 local function setLocalBlackout(enabled, duration)
@@ -742,19 +739,12 @@ local function handleIncomingKuanMessage(message)
 
     local blackoutTarget = text:match("^!KUAN_BLACKOUT%s+@([%w_]+)$")
     local restoreTarget = text:match("^!KUAN_RESTORE%s+@([%w_]+)$")
+
+    -- 本版本不再接受任何远程黑屏命令；仅保留远程恢复，便于清除旧版本留下的黑屏。
     if blackoutTarget and string.lower(blackoutTarget) == string.lower(LocalPlayer.Name) then
-        if not allowRemoteBlackout then
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "款脚本", Text = sender.Name .. " 请求黑屏，但你尚未允许远程黑屏。", Duration = 4
-                })
-            end)
-            return
-        end
-        setLocalBlackout(true, 10)
         pcall(function()
             game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "款脚本", Text = "收到 " .. sender.Name .. " 的黑屏请求，10 秒后自动恢复。", Duration = 4
+                Title = "款脚本", Text = "已忽略来自 " .. sender.Name .. " 的远程黑屏请求。", Duration = 3
             })
         end)
         return
@@ -764,18 +754,17 @@ local function handleIncomingKuanMessage(message)
         return
     end
 
-    -- 兼容旧版通用脚本定向黑屏/恢复协议。
-    local prefix, enabled
+    -- 兼容旧版协议：拒绝远程黑屏，但允许远程恢复。
     if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
-        prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
-    elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
-        prefix, enabled = RESTORE_REQUEST_PREFIX, false
-    end
-    if prefix then
-        local targetId, requestSenderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
+        local targetId, requestSenderId = text:sub(#BLACKOUT_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
         if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
-            if enabled and not allowRemoteBlackout then return end
-            setLocalBlackout(enabled, 10)
+            return
+        end
+    elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
+        local targetId, requestSenderId = text:sub(#RESTORE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
+        if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
+            setLocalBlackout(false)
+            return
         end
     end
 end
@@ -1460,11 +1449,11 @@ if getRank(LocalPlayer.Name) >= 2 then
         end
     })
 
-    -- 黑屏与恢复：通过聊天向目标发送指令，目标需运行配套脚本。
+    -- 屏幕请求：本机拒绝远程黑屏；向其他玩家发送的请求仍需对方版本主动允许。
     local blackoutTargetName = ""
     local sectionBlackout = tabPerm:Section({
         Name = "玩家屏幕管理",
-        SubName = "向低等级配套脚本用户发送黑屏/恢复指令",
+        SubName = "远程黑屏请求需对方同意；本机不会接受他人发来的黑屏命令",
         Logo = "83701039519151",
         Collapsible = true,
         Collapsed = true
@@ -1498,21 +1487,9 @@ if getRank(LocalPlayer.Name) >= 2 then
             and ("!KUAN_BLACKOUT @" .. target.Name)
             or ("!KUAN_RESTORE @" .. target.Name)
         local ok = pcall(function() channel:SendAsync(command) end)
-        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本并允许远程黑屏。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本并主动允许；本机已关闭接收远程黑屏。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
     end
-    sectionBlackout:Toggle({
-        Name = "允许别人向我请求黑屏",
-        Value = false,
-        Callback = function(v)
-            allowRemoteBlackout = v
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "款脚本", Text = v and "已允许远程黑屏请求（黑屏 10 秒后自动恢复）" or "已拒绝远程黑屏请求", Duration = 4
-                })
-            end)
-        end
-    })
-    sectionBlackout:Button({Name = "请求对方黑屏", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
+    sectionBlackout:Button({Name = "请求对方黑屏（需对方允许）", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
     sectionBlackout:Button({Name = "请求对方恢复屏幕", Callback = function() sendScreenCommand(RESTORE_REQUEST_PREFIX, "恢复屏幕", "已向 ") end})
 
     -- 黑名单管理：本地保存并在本机启动脚本时检查；不具备跨客户端同步能力。
