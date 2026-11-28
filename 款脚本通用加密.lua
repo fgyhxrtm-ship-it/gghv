@@ -223,22 +223,17 @@ local tagShimmerEnabled = true
 local tagVerticalShakeEnabled = false
 local tagHorizontalShakeEnabled = false
 
--- 纯客户端只能读取游戏服务器已复制给客户端的标记。
--- 只有服务器明确将目标玩家标记为 KuanScriptActive=true，才视为已启动款脚本。
--- 同时要求目标等级严格低于本地玩家；未标记、同级或更高级玩家均不显示。
+-- 客户端之间通过聊天握手识别是否正在运行款脚本。
+-- 注意：握手标记会作为普通聊天消息发出，聊天过滤/频道限制可能导致识别失败。
+local activeScriptUsers = {[LocalPlayer.UserId] = true}
+
 local function canSeeTag(myPlayer, targetPlayer)
     if not myPlayer or not targetPlayer then return false end
     if targetPlayer == myPlayer then return true end
-    if not showOtherTagsEnabled then return false end
+    if not showHeadTagEnabled or not showOtherTagsEnabled then return false end
     if getRank(myPlayer.Name) < 1 then return false end
     if getRank(targetPlayer.Name) >= getRank(myPlayer.Name) then return false end
-
-    local activeOk, isScriptActive = pcall(function()
-        return targetPlayer:GetAttribute("KuanScriptActive")
-    end)
-    if not activeOk or isScriptActive ~= true then return false end
-
-    return true
+    return activeScriptUsers[targetPlayer.UserId] == true
 end
 
 local function createTag(player)
@@ -561,10 +556,11 @@ end
 local function showRankWelcomeMessage(player)
     if not player or player == LocalPlayer then return end
 
+    if activeScriptUsers[player.UserId] ~= true then return end
     local joiningRank = getRank(player.Name)
     local localRank = getRank(LocalPlayer.Name)
 
-    -- 只欢迎比自己等级低的加入者；同级或更高级玩家不触发。
+    -- 只欢迎已启动款脚本、且等级低于本地玩家的加入者。
     if joiningRank >= localRank then return end
     if welcomedJoiners[player.UserId] then return end
     welcomedJoiners[player.UserId] = true
@@ -599,12 +595,13 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 Players.PlayerRemoving:Connect(function(player)
     welcomedJoiners[player.UserId] = nil
+    activeScriptUsers[player.UserId] = nil
     clearTag(player)
 end)
 
--- 仅测试官和作者可在聊天中输入“开/关”切换其他脚本用户头衔。
+-- 作者、测试官、测试人员（等级 1 及以上）可在聊天室输入“开/关”控制低等级头衔。
 local function handleTagVisibilityCommand(message)
-    if getRank(LocalPlayer.Name) < 2 then return end
+    if getRank(LocalPlayer.Name) < 1 then return end
     local command = tostring(message or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if command == "开" then
         showOtherTagsEnabled = true
@@ -616,87 +613,188 @@ local function handleTagVisibilityCommand(message)
         refreshAllTags()
     end
 end
-pcall(function()
-    LocalPlayer.Chatted:Connect(handleTagVisibilityCommand)
-end)
-pcall(function()
-    TextChatService.MessageReceived:Connect(function(message)
-        if message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
-            handleTagVisibilityCommand(message.Text)
-        end
-    end)
-end)
 
--- 请求离开协议：通过 Roblox 聊天频道向目标发送请求。
--- 接收方也必须运行包含本协议的脚本；其客户端会校验请求者等级后自行退出。
+local SCRIPT_ON_PREFIX = "[KUAN_SCRIPT_ON]"
+local SCRIPT_PING_MESSAGE = "[KUAN_SCRIPT_PING]"
 local LEAVE_REQUEST_PREFIX = "[KUAN_LEAVE_REQUEST]"
-pcall(function()
-    TextChatService.MessageReceived:Connect(function(message)
-        local source = message.TextSource
-        if not source or source.UserId == LocalPlayer.UserId then return end
-        local text = tostring(message.Text or "")
-        if text:sub(1, #LEAVE_REQUEST_PREFIX) ~= LEAVE_REQUEST_PREFIX then return end
-        local targetId, senderId = text:sub(#LEAVE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
-        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId then return end
-        if tonumber(senderId) ~= source.UserId then return end
-        local sender = Players:GetPlayerByUserId(source.UserId)
-        if not sender then return end
-        local senderRank = getRank(sender.Name)
-        local myRank = getRank(LocalPlayer.Name)
-        if senderRank < 2 or senderRank <= myRank then return end
-        LocalPlayer:Kick("你已接受 " .. sender.Name .. " 发出的离开游戏请求。")
-    end)
-end)
-
--- 黑屏/恢复协议：只改变接收方自己的客户端画面；接收方需运行配套脚本。
 local BLACKOUT_REQUEST_PREFIX = "[KUAN_BLACKOUT]"
 local RESTORE_REQUEST_PREFIX = "[KUAN_RESTORE]"
+
+local function getGeneralChatChannel()
+    local channels = TextChatService:FindFirstChild("TextChannels")
+    if not channels then return nil end
+    return channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel")
+end
+
+local function sendProtocolChat(text)
+    local sent = false
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local channel = getGeneralChatChannel()
+        if channel then sent = pcall(function() channel:SendAsync(text) end) end
+    else
+        local replicated = game:GetService("ReplicatedStorage")
+        local events = replicated:FindFirstChild("DefaultChatSystemChatEvents")
+        local say = events and events:FindFirstChild("SayMessageRequest")
+        if say then sent = pcall(function() say:FireServer(text, "All") end) end
+    end
+    return sent == true
+end
+
+local function announceScriptActive()
+    sendProtocolChat(SCRIPT_ON_PREFIX .. tostring(LocalPlayer.UserId))
+    sendProtocolChat(SCRIPT_PING_MESSAGE)
+end
+
 local blackoutGui = nil
-local function setLocalBlackout(enabled)
+local blackoutToken = 0
+local allowRemoteBlackout = false
+local kickCountdownActive = false
+
+local function setLocalBlackout(enabled, duration)
+    blackoutToken += 1
+    local token = blackoutToken
+    if not enabled then
+        if blackoutGui then blackoutGui:Destroy(); blackoutGui = nil end
+        return
+    end
+    if blackoutGui then blackoutGui:Destroy() end
     local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
-    if enabled then
-        if blackoutGui and blackoutGui.Parent then return end
-        blackoutGui = Instance.new("ScreenGui")
-        blackoutGui.Name = "KuanScriptBlackout"
-        blackoutGui.IgnoreGuiInset = true
-        blackoutGui.DisplayOrder = 1000000
-        blackoutGui.ResetOnSpawn = false
-        local frame = Instance.new("Frame")
-        frame.Name = "Blackout"
-        frame.Size = UDim2.fromScale(1, 1)
-        frame.Position = UDim2.fromScale(0, 0)
-        frame.BackgroundColor3 = Color3.new(0, 0, 0)
-        frame.BorderSizePixel = 0
-        frame.Parent = blackoutGui
-        blackoutGui.Parent = playerGui
-    elseif blackoutGui then
-        blackoutGui:Destroy()
-        blackoutGui = nil
+    blackoutGui = Instance.new("ScreenGui")
+    blackoutGui.Name = "KuanScriptBlackout"
+    blackoutGui.IgnoreGuiInset = true
+    blackoutGui.DisplayOrder = 1000000
+    blackoutGui.ResetOnSpawn = false
+    blackoutGui.Parent = playerGui
+    local frame = Instance.new("Frame")
+    frame.Name = "Blackout"
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.BackgroundColor3 = Color3.new(0, 0, 0)
+    frame.BorderSizePixel = 0
+    frame.Parent = blackoutGui
+    task.delay(duration or 10, function()
+        if blackoutToken == token then setLocalBlackout(false) end
+    end)
+end
+
+local function handleIncomingKuanMessage(message)
+    local source = message and message.TextSource
+    if not source then return end
+    local senderId = tonumber(source.UserId)
+    if not senderId then return end
+    local text = tostring(message.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local sender = Players:GetPlayerByUserId(senderId)
+    if not sender then return end
+
+    -- PING 的接收方回复自己的在线标记；ON 必须与真实聊天发送者 UserId 一致。
+    if text == SCRIPT_PING_MESSAGE then
+        if senderId ~= LocalPlayer.UserId then
+            sendProtocolChat(SCRIPT_ON_PREFIX .. tostring(LocalPlayer.UserId))
+        end
+        return
+    end
+    local announcedUserId = text:match("^%[KUAN_SCRIPT_ON%](%d+)$")
+    if announcedUserId then
+        if tonumber(announcedUserId) == senderId and senderId ~= LocalPlayer.UserId then
+            activeScriptUsers[senderId] = true
+            refreshAllTags()
+            showRankWelcomeMessage(sender)
+        end
+        return
+    end
+
+    if senderId == LocalPlayer.UserId then
+        handleTagVisibilityCommand(text)
+        return
+    end
+    if isScriptBlacklisted(sender.Name) then return end
+
+    local senderRank = getRank(sender.Name)
+    local myRank = getRank(LocalPlayer.Name)
+    if senderRank < 2 or senderRank <= myRank then return end
+
+    -- 管理版踢人协议：在聊天室发送 @用户名，目标端收到后倒计时 5 秒退出。
+    local kickTarget = text:match("^@([%w_]+)$")
+    if kickTarget and string.lower(kickTarget) == string.lower(LocalPlayer.Name) then
+        if kickCountdownActive then return end
+        kickCountdownActive = true
+        task.spawn(function()
+            for remaining = 5, 1, -1 do
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "款脚本请求", Text = sender.Name .. " 请求你离开，" .. remaining .. " 秒后退出。", Duration = 2
+                    })
+                end)
+                task.wait(1)
+            end
+            LocalPlayer:Kick("你已收到款脚本高等级成员的离开请求。")
+        end)
+        return
+    end
+
+    -- 兼容旧版通用脚本的定向离开请求。
+    if text:sub(1, #LEAVE_REQUEST_PREFIX) == LEAVE_REQUEST_PREFIX then
+        local targetId, requestSenderId = text:sub(#LEAVE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
+        if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
+            LocalPlayer:Kick("你已接受 " .. sender.Name .. " 发出的离开游戏请求。")
+        end
+        return
+    end
+
+    local blackoutTarget = text:match("^!KUAN_BLACKOUT%s+@([%w_]+)$")
+    local restoreTarget = text:match("^!KUAN_RESTORE%s+@([%w_]+)$")
+    if blackoutTarget and string.lower(blackoutTarget) == string.lower(LocalPlayer.Name) then
+        if not allowRemoteBlackout then
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "款脚本", Text = sender.Name .. " 请求黑屏，但你尚未允许远程黑屏。", Duration = 4
+                })
+            end)
+            return
+        end
+        setLocalBlackout(true, 10)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "款脚本", Text = "收到 " .. sender.Name .. " 的黑屏请求，10 秒后自动恢复。", Duration = 4
+            })
+        end)
+        return
+    end
+    if restoreTarget and string.lower(restoreTarget) == string.lower(LocalPlayer.Name) then
+        setLocalBlackout(false)
+        return
+    end
+
+    -- 兼容旧版通用脚本定向黑屏/恢复协议。
+    local prefix, enabled
+    if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
+        prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
+    elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
+        prefix, enabled = RESTORE_REQUEST_PREFIX, false
+    end
+    if prefix then
+        local targetId, requestSenderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
+        if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
+            if enabled and not allowRemoteBlackout then return end
+            setLocalBlackout(enabled, 10)
+        end
     end
 end
 
-pcall(function()
-    TextChatService.MessageReceived:Connect(function(message)
-        local source = message.TextSource
-        if not source or source.UserId == LocalPlayer.UserId then return end
-        local text = tostring(message.Text or "")
-        local prefix, enabled
-        if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
-            prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
-        elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
-            prefix, enabled = RESTORE_REQUEST_PREFIX, false
-        else
-            return
-        end
-        local targetId, senderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
-        if not targetId or tonumber(targetId) ~= LocalPlayer.UserId or tonumber(senderId) ~= source.UserId then return end
-        local sender = Players:GetPlayerByUserId(source.UserId)
-        if not sender then return end
-        local senderRank, myRank = getRank(sender.Name), getRank(LocalPlayer.Name)
-        if senderRank < 2 or senderRank <= myRank then return end
-        setLocalBlackout(enabled)
-    end)
-end)
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    pcall(function() TextChatService.MessageReceived:Connect(handleIncomingKuanMessage) end)
+else
+    local function bindLegacyChat(player)
+        if player == LocalPlayer then return end
+        player.Chatted:Connect(function(text)
+            handleIncomingKuanMessage({Text = text, TextSource = {UserId = player.UserId}})
+        end)
+    end
+    for _, player in ipairs(Players:GetPlayers()) do bindLegacyChat(player) end
+    Players.PlayerAdded:Connect(bindLegacyChat)
+    pcall(function() LocalPlayer.Chatted:Connect(handleTagVisibilityCommand) end)
+end
+
+task.delay(2, announceScriptActive)
 
 local voidProtectEnabled = false
 local voidPositions = {}
@@ -1294,8 +1392,7 @@ if getRank(LocalPlayer.Name) >= 1 then
     })
 end
 
--- 测试官和作者的聊天“开/关”权限独立于测试人员区域管理。
--- “开”会显示本地客户端可识别的其他脚本用户头衔；“关”则隐藏。
+-- 作者、测试官、测试人员均可在聊天框输入“开/关”控制低等级脚本用户头衔。
 if getRank(LocalPlayer.Name) >= 2 then
     local sectionOfficer = tabPerm:Section({
         Name = "测试官与作者权限",
@@ -1357,9 +1454,9 @@ if getRank(LocalPlayer.Name) >= 2 then
                 pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = "聊天频道不可用，无法发送请求。", Duration = 4}) end)
                 return
             end
-            local payload = LEAVE_REQUEST_PREFIX .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
+            local payload = "@" .. target.Name
             local ok = pcall(function() channel:SendAsync(payload) end)
-            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = ok and ("已向 " .. target.Name .. " 发送请求；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+            pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = "请求玩家离开", Text = ok and ("已向 " .. target.Name .. " 发送请求；对方将在 5 秒倒计时后退出。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
         end
     })
 
@@ -1397,10 +1494,24 @@ if getRank(LocalPlayer.Name) >= 2 then
             pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = "聊天频道不可用，无法发送指令。", Duration = 4}) end)
             return
         end
-        local payload = prefix .. tostring(target.UserId) .. ":" .. tostring(LocalPlayer.UserId)
-        local ok = pcall(function() channel:SendAsync(payload) end)
-        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+        local command = (prefix == BLACKOUT_REQUEST_PREFIX)
+            and ("!KUAN_BLACKOUT @" .. target.Name)
+            or ("!KUAN_RESTORE @" .. target.Name)
+        local ok = pcall(function() channel:SendAsync(command) end)
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本并允许远程黑屏。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
     end
+    sectionBlackout:Toggle({
+        Name = "允许别人向我请求黑屏",
+        Value = false,
+        Callback = function(v)
+            allowRemoteBlackout = v
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "款脚本", Text = v and "已允许远程黑屏请求（黑屏 10 秒后自动恢复）" or "已拒绝远程黑屏请求", Duration = 4
+                })
+            end)
+        end
+    })
     sectionBlackout:Button({Name = "请求对方黑屏", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
     sectionBlackout:Button({Name = "请求对方恢复屏幕", Callback = function() sendScreenCommand(RESTORE_REQUEST_PREFIX, "恢复屏幕", "已向 ") end})
 
