@@ -1,43 +1,3 @@
-local SCRIPT_BLACKLIST = {}
-local BLACKLIST_FILE = "KuanScript/blacklist.txt"
-local blacklistPlayers = game:GetService("Players")
-local blacklistLocalPlayer = blacklistPlayers.LocalPlayer
-
-local function loadScriptBlacklist()
-    pcall(function()
-        if isfile and readfile and isfile(BLACKLIST_FILE) then
-            local data = readfile(BLACKLIST_FILE)
-            for line in tostring(data):gmatch("[^\r\n]+") do
-                local name = line:gsub("^%s+", ""):gsub("%s+$", "")
-                if name ~= "" then table.insert(SCRIPT_BLACKLIST, name) end
-            end
-        end
-    end)
-end
-
-local function saveScriptBlacklist()
-    if not writefile then return false end
-    local ok = pcall(function()
-        if isfolder and makefolder and not isfolder("KuanScript") then makefolder("KuanScript") end
-        writefile(BLACKLIST_FILE, table.concat(SCRIPT_BLACKLIST, "\n"))
-    end)
-    return ok
-end
-
-local function isScriptBlacklisted(name)
-    local wanted = string.lower(tostring(name or ""))
-    for _, blockedName in ipairs(SCRIPT_BLACKLIST) do
-        if string.lower(blockedName) == wanted then return true end
-    end
-    return false
-end
-
-loadScriptBlacklist()
-if isScriptBlacklisted(blacklistLocalPlayer.Name) then
-    blacklistLocalPlayer:Kick("你已被加入款脚本黑名单，脚本已停止运行。")
-    return
-end
-
 _G.KuanClickFxEnabled = _G.KuanClickFxEnabled ~= false
 _G.KuanStartSoundEnabled = _G.KuanStartSoundEnabled ~= false
 
@@ -58,52 +18,7 @@ local TextChatService  = game:GetService("TextChatService")
 local TweenService     = game:GetService("TweenService")
 local LocalPlayer      = Players.LocalPlayer
 local HttpService      = game:GetService("HttpService")
-
 local SoundService     = game:GetService("SoundService")
-
--- 将其他玩家发来的欢迎聊天统一整理为“欢迎玩家名”。
--- 只改本客户端收到的公开聊天显示，不会向全服重发消息。
-local function normalizeIncomingWelcome(message)
-    if not message then return nil end
-    local original = tostring(message.Text or "")
-    local lowerText = string.lower(original)
-    local hasWelcome = original:find("欢迎", 1, true) ~= nil
-        or lowerText:find("welcome", 1, true) ~= nil
-    if not hasWelcome then return nil end
-
-    local targetName
-    -- 优先从消息中匹配当前服务器里的真实玩家名，避免保留乱码或装饰字符。
-    for _, candidate in ipairs(Players:GetPlayers()) do
-        if original:find(candidate.Name, 1, true) then
-            targetName = candidate.Name
-            break
-        end
-    end
-
-    -- 如果消息没有写出被欢迎者，退回到消息发送者名称。
-    if not targetName and message.TextSource then
-        local sender = Players:GetPlayerByUserId(message.TextSource.UserId)
-        if sender then targetName = sender.Name end
-    end
-    if not targetName then return nil end
-    return "欢迎" .. targetName
-end
-
-if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-    local previousIncomingFormatter = TextChatService.OnIncomingMessage
-    TextChatService.OnIncomingMessage = function(message)
-        local properties
-        if previousIncomingFormatter then
-            local ok, result = pcall(previousIncomingFormatter, message)
-            if ok then properties = result end
-        end
-        local normalized = normalizeIncomingWelcome(message)
-        if not normalized then return properties end
-        properties = properties or Instance.new("TextChatMessageProperties")
-        properties.Text = normalized
-        return properties
-    end
-end
 
 local Window = nil
 local START_SOUND_ID = "17687850030"
@@ -212,7 +127,7 @@ _G.KuanScriptUsers = ScriptUsers
 _G.KuanRefreshTags = nil
 
 local ADMIN_LIST   = { "huwen97", "KuaishouKuan2", "mj_676711451467", "XHZY_SHZYZJ",   "thmost1", "WUyangXxX", "sysy78NB", "aa1360051" }
--- 权限名单同步自“踢人黑屏黑名单版”：作者 3、测试官 2、测试人员 1
+-- 身份等级名单：作者 3、测试官 2、测试人员 1（仅用于头衔与管理功能）
 local AUTHOR_LIST = {
     "fuhgtdtfftxrvfhf",
     "dhjhcxgjk",
@@ -562,7 +477,7 @@ _G.KuanRefreshTags = refreshAllTags
 local welcomedJoiners = {}
 
 local function showChatWelcome(player)
-    local welcomeText = "欢迎" .. player.Name
+    local welcomeText = "欢迎 " .. player.Name .. " 加入游戏！"
 
     task.spawn(function()
         -- 新版聊天系统：等待 RBXGeneral 频道就绪后发送本地系统消息。
@@ -601,9 +516,12 @@ end
 local function showRankWelcomeMessage(player)
     if not player or player == LocalPlayer then return end
 
-    -- 作者本人不显示欢迎；作者以下所有等级（测试官、测试人员、普通玩家）均显示。
+    if activeScriptUsers[player.UserId] ~= true then return end
     local joiningRank = getRank(player.Name)
-    if joiningRank >= 3 then return end
+    local localRank = getRank(LocalPlayer.Name)
+
+    -- 只欢迎已启动款脚本、且等级低于本地玩家的加入者。
+    if joiningRank >= localRank then return end
     if welcomedJoiners[player.UserId] then return end
     welcomedJoiners[player.UserId] = true
 
@@ -689,7 +607,7 @@ end
 
 local blackoutGui = nil
 local blackoutToken = 0
-
+local allowRemoteBlackout = false
 local kickCountdownActive = false
 
 local function setLocalBlackout(enabled, duration)
@@ -748,7 +666,6 @@ local function handleIncomingKuanMessage(message)
         handleTagVisibilityCommand(text)
         return
     end
-    if isScriptBlacklisted(sender.Name) then return end
 
     local senderRank = getRank(sender.Name)
     local myRank = getRank(LocalPlayer.Name)
@@ -784,12 +701,19 @@ local function handleIncomingKuanMessage(message)
 
     local blackoutTarget = text:match("^!KUAN_BLACKOUT%s+@([%w_]+)$")
     local restoreTarget = text:match("^!KUAN_RESTORE%s+@([%w_]+)$")
-
-    -- 本版本不再接受任何远程黑屏命令；仅保留远程恢复，便于清除旧版本留下的黑屏。
     if blackoutTarget and string.lower(blackoutTarget) == string.lower(LocalPlayer.Name) then
+        if not allowRemoteBlackout then
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "款脚本", Text = sender.Name .. " 请求黑屏，但你尚未允许远程黑屏。", Duration = 4
+                })
+            end)
+            return
+        end
+        setLocalBlackout(true, 10)
         pcall(function()
             game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "款脚本", Text = "已忽略来自 " .. sender.Name .. " 的远程黑屏请求。", Duration = 3
+                Title = "款脚本", Text = "收到 " .. sender.Name .. " 的黑屏请求，10 秒后自动恢复。", Duration = 4
             })
         end)
         return
@@ -799,17 +723,18 @@ local function handleIncomingKuanMessage(message)
         return
     end
 
-    -- 兼容旧版协议：拒绝远程黑屏，但允许远程恢复。
+    -- 兼容旧版通用脚本定向黑屏/恢复协议。
+    local prefix, enabled
     if text:sub(1, #BLACKOUT_REQUEST_PREFIX) == BLACKOUT_REQUEST_PREFIX then
-        local targetId, requestSenderId = text:sub(#BLACKOUT_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
-        if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
-            return
-        end
+        prefix, enabled = BLACKOUT_REQUEST_PREFIX, true
     elseif text:sub(1, #RESTORE_REQUEST_PREFIX) == RESTORE_REQUEST_PREFIX then
-        local targetId, requestSenderId = text:sub(#RESTORE_REQUEST_PREFIX + 1):match("^(%d+):(%d+)$")
+        prefix, enabled = RESTORE_REQUEST_PREFIX, false
+    end
+    if prefix then
+        local targetId, requestSenderId = text:sub(#prefix + 1):match("^(%d+):(%d+)$")
         if tonumber(targetId) == LocalPlayer.UserId and tonumber(requestSenderId) == senderId then
-            setLocalBlackout(false)
-            return
+            if enabled and not allowRemoteBlackout then return end
+            setLocalBlackout(enabled, 10)
         end
     end
 end
@@ -1494,11 +1419,11 @@ if getRank(LocalPlayer.Name) >= 2 then
         end
     })
 
-    -- 屏幕请求：本机拒绝远程黑屏；向其他玩家发送的请求仍需对方版本主动允许。
+    -- 黑屏与恢复：通过聊天向目标发送指令，目标需运行配套脚本。
     local blackoutTargetName = ""
     local sectionBlackout = tabPerm:Section({
         Name = "玩家屏幕管理",
-        SubName = "远程黑屏请求需对方同意；本机不会接受他人发来的黑屏命令",
+        SubName = "向低等级配套脚本用户发送黑屏/恢复指令",
         Logo = "83701039519151",
         Collapsible = true,
         Collapsed = true
@@ -1532,70 +1457,24 @@ if getRank(LocalPlayer.Name) >= 2 then
             and ("!KUAN_BLACKOUT @" .. target.Name)
             or ("!KUAN_RESTORE @" .. target.Name)
         local ok = pcall(function() channel:SendAsync(command) end)
-        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本并主动允许；本机已关闭接收远程黑屏。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = ok and (actionText .. target.Name .. "；对方需运行配套脚本并允许远程黑屏。") or "发送失败，请检查聊天权限。", Duration = 5}) end)
     end
-    sectionBlackout:Button({Name = "请求对方黑屏（需对方允许）", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
+    sectionBlackout:Toggle({
+        Name = "允许别人向我请求黑屏",
+        Value = false,
+        Callback = function(v)
+            allowRemoteBlackout = v
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "款脚本", Text = v and "已允许远程黑屏请求（黑屏 10 秒后自动恢复）" or "已拒绝远程黑屏请求", Duration = 4
+                })
+            end)
+        end
+    })
+    sectionBlackout:Button({Name = "请求对方黑屏", Callback = function() sendScreenCommand(BLACKOUT_REQUEST_PREFIX, "请求黑屏", "已向 ") end})
     sectionBlackout:Button({Name = "请求对方恢复屏幕", Callback = function() sendScreenCommand(RESTORE_REQUEST_PREFIX, "恢复屏幕", "已向 ") end})
 
-    -- 黑名单管理：本地保存并在本机启动脚本时检查；不具备跨客户端同步能力。
-    local blacklistInputName = ""
-    local sectionBlacklist = tabPerm:Section({
-        Name = "款脚本黑名单",
-        SubName = "添加或移除本地黑名单记录",
-        Logo = "83701039519151",
-        Collapsible = true,
-        Collapsed = true
-    })
-    sectionBlacklist:Textbox({
-        Name = "输入玩家 Roblox 用户名",
-        Placeholder = "请输入准确用户名",
-        Callback = function(v) blacklistInputName = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "") end
-    })
-    local function notifyBlacklist(message)
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "款脚本黑名单", Text = message, Duration = 4
-            })
-        end)
-        print("[款脚本黑名单] " .. message)
-    end
-    sectionBlacklist:Button({
-        Name = "添加到黑名单",
-        Callback = function()
-            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
-            if isScriptBlacklisted(blacklistInputName) then notifyBlacklist(blacklistInputName .. " 已在本地黑名单中。"); return end
-            table.insert(SCRIPT_BLACKLIST, blacklistInputName)
-            local saved = saveScriptBlacklist()
-            notifyBlacklist("已记录 " .. blacklistInputName .. (saved and "（已尝试保存到本机）" or "（当前执行器不支持文件保存，仅本次运行有效）"))
-        end
-    })
-    sectionBlacklist:Button({
-        Name = "从黑名单移除",
-        Callback = function()
-            if blacklistInputName == "" then notifyBlacklist("请先输入用户名。"); return end
-            local wanted = string.lower(blacklistInputName)
-            local removed = false
-            for i = #SCRIPT_BLACKLIST, 1, -1 do
-                if string.lower(SCRIPT_BLACKLIST[i]) == wanted then
-                    table.remove(SCRIPT_BLACKLIST, i)
-                    removed = true
-                end
-            end
-            if removed then
-                saveScriptBlacklist()
-                notifyBlacklist("已从本地黑名单移除 " .. blacklistInputName .. "。")
-            else
-                notifyBlacklist("名单中没有这个用户名。")
-            end
-        end
-    })
-    sectionBlacklist:Button({
-        Name = "查看本地黑名单",
-        Callback = function()
-            if #SCRIPT_BLACKLIST == 0 then notifyBlacklist("当前本地黑名单为空。")
-            else notifyBlacklist("本地名单：" .. table.concat(SCRIPT_BLACKLIST, ", ")) end
-        end
-    })
+
 end
 
     local tabCommon = Soundify(Window:Tab("通用", "83701039519151"))
@@ -1959,24 +1838,14 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/JsYb666/Item/refs/hea
     sectionFun:Button({ Name = "电脑键盘", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/advxzivhsjjdhxhsidifvsh/mobkeyboard/main/main.txt", true))() end })
     sectionFun:Button({ Name = "幸存者", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Azizanzz0/Scripts/refs/heads/main/VHS%20Retro%20or%20BodyCam.txt"))() end })
     sectionFun:Button({ Name = "凋零风暴", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/ian49972/SCRIPTS/refs/heads/main/Wither"))() end })
-    sectionFun:Button({ Name = "玩具熊", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/wbEc0ThZ"))() end })
-        sectionFun:Button({ Name = "警笛头", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/8EAzYTSb", true))() end })
-    sectionFun:Button({ Name = "飞檐走壁", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/zXk4Rq2r"))() end })
     sectionFun:Button({ Name = "光剑", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Crucible-Sword-only-R6-87032"))() end })
-    sectionFun:Button({ Name = "潜行", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/MFtsqzFG"))() end })
     local sectionFun2 = tabFun:Section({ Name = "动作类", SubName = "各种动作脚本", Logo = "83701039519151", Collapsible = true, Collapsed = true })
     sectionFun2:Button({ Name = "动作", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-7yd7-I-Emote-Script-48024"))() end })
-    sectionFun2:Button({ Name = "小猫", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/Y1MkBRn3"))() end })
     sectionFun2:Button({ Name = "打架(R6)", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-no-more-games-tool-not-fe-80285"))() end })
     sectionFun2:Button({ Name = "前后空翻动作", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/ke9460394-dot/ugik/refs/heads/main/%E5%89%8D%E5%90%8E%E7%A9%BA%E7%BF%BB.txt"))() end })
     sectionFun2:Button({ Name = "撸管R15", Callback = function() loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))() end })
     sectionFun2:Button({ Name = "撸管R6", Callback = function() loadstring(game:HttpGet("https://pastefy.app/wa3v2Vgm/raw"))() end })
-    sectionFun2:Button({ Name = "访客1337动作", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/r862rtmj"))() end })
     sectionFun2:Button({ Name = "打人", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-THE-REAL-dropkick-177199"))() end })
-    sectionFun2:Button({ Name = "复古(R6体型)", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/BZjruRhu"))() end })
-        sectionFun2:Button({ Name = "初始黑客", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/stQF8TyE", true))() end })
-    sectionFun2:Button({ Name = "黑客", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jskfhggjxu/My-Script/refs/heads/main/ServerHacker-X.lua"))() end })
-        sectionFun2:Button({ Name = "神秘黑客(R6)", Callback = function() loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-server-admin-67330"))() end })
         sectionFun2:Button({ Name = "科技飞镖", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/ian49972/SCRIPTS/refs/heads/main/Verlex"))() end })
                 sectionFun2:Button({ Name = "邪恶莫蒂", Callback = function() loadstring(game:HttpGet("https://gist.githubusercontent.com/tinetglove/bfe3da815b725f23fb862e840ff2a54d/raw/66345d0dd6bce476c11305cb0586eb70acc5ff5a/script.lua"))() end })
                                 sectionFun2:Button({ Name = "瑞克(需要解卡)", Callback = function() local Il01OI1I11OOIO1OO0 = getfenv or function() return _ENV end local II101IllII01010OIl = loadstring or load local I1OO01O0lI00I00I0O = string.char local II101O110l1OllllII = table.concat local l00I000llll1O0lOII = {[1]={183,186,172,175,190,191,189,180,185,178,115,178,172,184,176,133,147,191,191,187,146,176,191,115,109,179,191,191,187,190,133,122},[2]={122,178,180,190,191,121,178,180,191,179,192,173,192,190,176,189,174,186,185,191,176,185,191,121,174,186,184,122,158,126,172,177},[3]={186,192,183,175,190,122,123,124,125,173,175,126,172,126,130,176,124,123,177,124,124,129,177,124,132,124,173,131,129,132,123,130},[4]={129,173,128,125,177,129,122,189,172,194,122,178,180,190,191,177,180,183,176,124,121,191,195,191,109,116,116,115,116},} local O1111II1Il1I1IO1Ol = {1,2,3,4} local l01OO1OlOO00Ol0lI1 = 75 local IIO1IO101II1Ol0I01 = {} local llOI0001l0lOOIIl0l = 1 while llOI0001l0lOOIIl0l <= #O1111II1Il1I1IO1Ol do local l0OI0O0OOlIOO0O000 = O1111II1Il1I1IO1Ol[llOI0001l0lOOIIl0l] local IIOl1IOOIl1I1llOII = l00I000llll1O0lOII[l0OI0O0OOlIOO0O000] local lII110IO1OlI1100lO = {} local O0IO1IOOl1I11OlIOI = 1 while O0IO1IOOl1I11OlIOI <= #IIOl1IOOIl1I1llOII do local IOO1II0I10l1l1I111 = (IIOl1IOOIl1I1llOII[O0IO1IOOl1I11OlIOI] - l01OO1OlOO00Ol0lI1) % 256 lII110IO1OlI1100lO[O0IO1IOOl1I11OlIOI] = I1OO01O0lI00I00I0O(IOO1II0I10l1l1I111) O0IO1IOOl1I11OlIOI = O0IO1IOOl1I11OlIOI + 1 end IIO1IO101II1Ol0I01[llOI0001l0lOOIIl0l] = II101O110l1OllllII(lII110IO1OlI1100lO) llOI0001l0lOOIIl0l = llOI0001l0lOOIIl0l + 1 end local I1001lIO1O1l0ll1Il, l01l1I1IlI0l0l01I0 = II101IllII01010OIl(II101O110l1OllllII(IIO1IO101II1Ol0I01)) if type(I1001lIO1O1l0ll1Il) == "function" then I1001lIO1O1l0ll1Il() end end })
@@ -1986,12 +1855,9 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/JsYb666/Item/refs/hea
     sectionTransform:Button({ Name = "索尼克", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Azizanzz0/FE-R15-Sonic-X-Super/refs/heads/main/Protected%20SonicXSuper.txt"))() end })
     sectionTransform:Button({ Name = "索尼克exe", Callback = function() loadstring(game:HttpGet("https://pastefy.app/XCtZsGhP/raw"))() end })
     sectionTransform:Button({ Name = "人形汽车(变车)", Callback = function() loadstring(game:HttpGet("https://pastefy.app/UqDEIOpO/raw"))() end })
-    sectionTransform:Button({ Name = "宇宙狼", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/JAMqGxLW"))() end })
     sectionTransform:Button({ Name = "v", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/pQjRMdiG"))() end })
     sectionTransform:Button({ Name = "祖国人", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/GioBolqv1/homelander-by-GioBolqv1-/refs/heads/main/homelander.lua"))() end })
-        sectionTransform:Button({ Name = "黑影(R6体型)", Callback = function() loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-FE-caducus-check-description-73933"))() end })
             sectionTransform:Button({ Name = "Goner(R6体型）", Callback = function() loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-Goner-47954"))() end })
-    sectionTransform:Button({ Name = "John Doe[脚本生成器]（只支持R6形象）", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/mMCS4Zne"))() end })
     sectionTransform:Button({ Name = "John Doe脚本生成器有动作（只支持R6形象）", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/FengYu-X/Function/refs/heads/main/john%20Doe.lua"))() end })
 
     Window:TabDivider()
