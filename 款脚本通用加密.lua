@@ -126,8 +126,6 @@ local ScriptUsers = { [LocalPlayer.Name] = true }
 _G.KuanScriptUsers = ScriptUsers
 _G.KuanRefreshTags = nil
 
-local ADMIN_LIST   = { "huwen97", "KuaishouKuan2", "mj_676711451467", "XHZY_SHZYZJ",   "thmost1", "WUyangXxX", "sysy78NB", "aa1360051" }
--- 身份等级名单：作者 3、测试官 2、测试人员 1（仅用于头衔与管理功能）
 local AUTHOR_LIST = {
     "fuhgtdtfftxrvfhf",
     "dhjhcxgjk",
@@ -136,13 +134,16 @@ local TEST_OFFICER_LIST = {
     "ctyccttvyvv",
     "Noobplayer4523XD",
     "wR1P84",
+    "thmost1",
 }
 local TESTER_LIST = {
+    "gjvhjhh80",
     "huwen97",
+    "jyfjyf09100352",
+    "64645hxygd",
     "KuaishouKuan2",
     "mj_676711451467",
     "XHZY_SHZYZJ",
-    "thmost1",
     "WUyangXxX",
     "sysy78NB",
     "aa1360051",
@@ -567,10 +568,12 @@ local function handleTagVisibilityCommand(message)
         showOtherTagsEnabled = true
         allowLowRankTagsEnabled = true
         refreshAllTags()
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title="头衔控制", Text="已开启：显示低等级玩家头衔", Duration=3}) end)
     elseif command == "关" then
         showOtherTagsEnabled = false
         allowLowRankTagsEnabled = false
         refreshAllTags()
+        pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title="头衔控制", Text="已关闭：隐藏低等级玩家头衔", Duration=3}) end)
     end
 end
 
@@ -601,8 +604,8 @@ local function sendProtocolChat(text)
 end
 
 local function announceScriptActive()
-    sendProtocolChat(SCRIPT_ON_PREFIX .. tostring(LocalPlayer.UserId))
-    sendProtocolChat(SCRIPT_PING_MESSAGE)
+    --sendProtocolChat(SCRIPT_ON_PREFIX .. tostring(LocalPlayer.UserId))
+    --sendProtocolChat(SCRIPT_PING_MESSAGE)
 end
 
 local blackoutGui = nil
@@ -739,7 +742,7 @@ local function handleIncomingKuanMessage(message)
     end
 end
 
-if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+if false and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
     pcall(function() TextChatService.MessageReceived:Connect(handleIncomingKuanMessage) end)
 else
     local function bindLegacyChat(player)
@@ -2617,4 +2620,52 @@ end
 
 PlayExclusiveIntro(function()
     StartMain()
+end)
+
+
+task.spawn(function()
+    task.wait(3) -- 等待主脚本加载
+    local TextChatService = game:GetService("TextChatService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- 功能：低等级玩家自动在聊天框欢迎高等级玩家
+    local function checkWelcome(msg)
+        local source = msg and msg.TextSource
+        if not source or not source.UserId then return end
+        local senderId = tonumber(source.UserId)
+        local text = tostring(msg.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        
+        -- 收到别人发的暗号（此时暗号已经被隐藏了，只有开了脚本的人能识别）
+        if text:match("^%[KUAN_SCRIPT_ON%]") and senderId ~= LocalPlayer.UserId then
+            local sender = Players:GetPlayerByUserId(senderId)
+            if sender then
+                local myRank = getRank(LocalPlayer.Name)
+                local senderRank = getRank(sender.Name)
+                
+                -- 对方等级比我高，我就发欢迎语
+                if senderRank > myRank then
+                    local title = "测试人员"
+                    if senderRank == 3 then title = "作者" 
+                    elseif senderRank == 2 then title = "测试官" end
+                    
+                    local welcomeMsg = "欢迎款脚本" .. title .. " " .. sender.Name .. " 加入游戏！"
+                    
+                    -- 延迟发送，防止被 Roblox 聊天拦截
+                    task.delay(1.5, function()
+                        local channels = TextChatService:FindFirstChild("TextChannels")
+                        local channel = channels and (channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildWhichIsA("TextChannel"))
+                        if channel then 
+                            pcall(function() channel:SendAsync(welcomeMsg) end) 
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    -- 绑定聊天监听
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        TextChatService.MessageReceived:Connect(checkWelcome)
+    end
 end)
